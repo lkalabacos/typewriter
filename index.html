@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Studio Typewriter</title>
-  <meta name="description" content="Minimalist offline studio-lit digital typewriter." />
+  <meta name="description" content="Minimalist offline studio-lit digital typewriter with 3D Book Mode." />
   <meta name="theme-color" content="#7d818e" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -22,8 +22,8 @@
       --platen-bottom: #2b2d34;
       --ink-color: #1f1e22;
       --ink-muted: rgba(31, 30, 34, 0.55);
-      --hud-ink: rgba(248, 246, 242, 0.85);
-      --hud-bg: rgba(28, 30, 36, 0.28);
+      --hud-ink: rgba(248, 246, 242, 0.86);
+      --hud-bg: rgba(28, 30, 36, 0.30);
       --hud-border: rgba(255, 255, 255, 0.14);
       --panel-bg: rgba(30, 32, 39, 0.92);
       --panel-border: rgba(255, 255, 255, 0.12);
@@ -40,11 +40,20 @@
       --spill-core: rgba(248, 188, 126, 0.42);
       --spill-outer: rgba(226, 146, 86, 0.14);
 
-      /* Typography */
+      /* Typewriter Typography */
       --font-family: 'Courier Prime', 'American Typewriter', 'Courier New', 'SF Mono', ui-monospace, monospace;
       --font-size: 18px;
       --line-height: 1.72;
       --col-width: 64ch;
+
+      /* Book Mode Typography & Dimensions */
+      --book-font: 'Baskerville', 'Iowan Old Style', 'Palatino Linotype', 'Georgia', serif;
+      --book-font-size: 14.5px;
+      --book-line-height: 1.62;
+      --page-w: 390px;
+      --page-h: 576px;
+      --left-stack: 0px;
+      --right-stack: 12px;
     }
 
     body[data-mood="midnight"] {
@@ -53,7 +62,7 @@
       --platen-top: #1d1f27;
       --platen-bottom: #111218;
       --ink-color: #1b191d;
-      --hud-ink: rgba(245, 238, 228, 0.82);
+      --hud-ink: rgba(245, 238, 228, 0.84);
     }
 
     body[data-mood="daylight"] {
@@ -62,9 +71,9 @@
       --platen-top: #8f939e;
       --platen-bottom: #6f737f;
       --ink-color: #1e1e22;
-      --hud-ink: rgba(30, 32, 38, 0.84);
-      --hud-bg: rgba(255, 255, 255, 0.45);
-      --hud-border: rgba(0, 0, 0, 0.08);
+      --hud-ink: rgba(30, 32, 38, 0.86);
+      --hud-bg: rgba(255, 255, 255, 0.48);
+      --hud-border: rgba(0, 0, 0, 0.09);
     }
 
     * {
@@ -84,13 +93,21 @@
       user-select: none;
     }
 
-    /* ==================== STAGE ==================== */
+    /* ==================== TYPEWRITER STAGE ==================== */
     .stage {
       position: relative;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
       cursor: text;
+      transition: opacity 0.35s ease;
+    }
+
+    body.book-mode .stage,
+    body.book-mode .hud,
+    body.book-mode .platen-footer {
+      opacity: 0;
+      pointer-events: none;
     }
 
     /* Upper Paper Surface */
@@ -102,7 +119,6 @@
       z-index: 1;
     }
 
-    /* Subtle organic matte paper grain */
     .paper-grain {
       position: absolute;
       inset: 0;
@@ -115,7 +131,6 @@
       z-index: 2;
     }
 
-    /* Moving Warm Upward Studio-Lamp Spotlight */
     .spotlight-layer {
       position: absolute;
       inset: 0;
@@ -138,7 +153,6 @@
       will-change: background;
     }
 
-    /* Subtle top edge vignette for depth */
     .paper-vignette {
       position: absolute;
       inset: 0;
@@ -170,7 +184,6 @@
       );
     }
 
-    /* Paper Column Viewport */
     .editor-clip {
       position: absolute;
       inset: 0 0 calc(100vh - var(--platen-y)) 0;
@@ -222,15 +235,15 @@
       font-style: italic;
     }
 
-    /* Active custom subtle vertical ink cursor right above T-guide */
+    /* Aligned vertical ink caret: centered directly on the measured glyph box */
     .ink-caret {
       position: fixed;
-      width: 1.5px;
-      height: calc(var(--font-size) * 1.15);
-      background: rgba(25, 24, 28, 0.85);
+      width: 1.6px;
+      height: calc(var(--font-size) * 1.12);
+      background: rgba(25, 24, 28, 0.88);
       pointer-events: none;
       z-index: 9;
-      transform: translate3d(-50%, -100%, 0);
+      transform: translate3d(-50%, -50%, 0);
       border-radius: 1px;
       animation: caretBlink 1.05s steps(2, start) infinite;
       transition: left 0.055s ease-out, top 0.08s ease-out, opacity 0.15s;
@@ -246,7 +259,6 @@
       56%, 100% { opacity: 0.12; }
     }
 
-    /* Hidden mirror for exact caret X/Y measurement */
     #caret-mirror {
       position: fixed;
       top: -9999px;
@@ -274,7 +286,6 @@
       pointer-events: none;
     }
 
-    /* Crisp platen track seam */
     .platen-track {
       position: absolute;
       left: 0;
@@ -290,7 +301,6 @@
       z-index: 11;
     }
 
-    /* Warm downward light spill reflection onto lower shaded platen */
     .platen-spill {
       position: absolute;
       inset: 0;
@@ -315,7 +325,6 @@
       will-change: left;
     }
 
-    /* Mechanical dark-steel T-guide directly beneath active character */
     .t-guide {
       position: absolute;
       left: 50%;
@@ -350,7 +359,6 @@
       border-radius: 0 0 1px 1px;
     }
 
-    /* Brushed-silver 3D carriage pill (52x14px) */
     .carriage-pill {
       position: relative;
       width: 52px;
@@ -393,7 +401,7 @@
       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
     }
 
-    /* ==================== MINIMAL HUD ==================== */
+    /* ==================== MINIMAL TOP HUD ==================== */
     .hud {
       position: fixed;
       top: 18px;
@@ -419,7 +427,7 @@
     .hud-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       pointer-events: auto;
     }
 
@@ -501,6 +509,11 @@
       color: #ffd9b0;
     }
 
+    body[data-mood="daylight"] .hud-btn.active {
+      color: #7c4a18;
+      border-color: rgba(168, 104, 42, 0.35);
+    }
+
     .hud-btn svg {
       width: 14px;
       height: 14px;
@@ -525,7 +538,6 @@
       display: inline-flex;
     }
 
-    /* Bottom subtle word counter on platen */
     .platen-footer {
       position: fixed;
       bottom: 18px;
@@ -546,6 +558,793 @@
       opacity: 0.28;
     }
 
+    /* ==================== 3D BOOK MODE OVERLAY ==================== */
+    .book-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.42s ease;
+      background:
+        radial-gradient(ellipse 68% 58% at 50% 42%, rgba(255, 224, 184, 0.22) 0%, rgba(232, 164, 104, 0.07) 42%, transparent 74%),
+        linear-gradient(180deg, #626673 0%, #4b4e5a 58%, #343742 100%);
+    }
+
+    body[data-mood="midnight"] .book-stage {
+      background:
+        radial-gradient(ellipse 62% 54% at 50% 42%, rgba(255, 206, 152, 0.16) 0%, rgba(212, 134, 72, 0.06) 44%, transparent 72%),
+        linear-gradient(180deg, #1b1d26 0%, #151720 60%, #0d0e14 100%);
+    }
+
+    body[data-mood="daylight"] .book-stage {
+      background:
+        radial-gradient(ellipse 70% 56% at 50% 40%, rgba(255, 248, 236, 0.45) 0%, transparent 72%),
+        linear-gradient(180deg, #cfd3dc 0%, #bcc1cc 60%, #a5aab7 100%);
+    }
+
+    body.book-mode .book-stage {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .book-topbar {
+      position: fixed;
+      top: 18px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 60;
+    }
+
+    .book-nav-center {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+      color: var(--hud-ink);
+      opacity: 0.85;
+      letter-spacing: 0.02em;
+    }
+
+    .book-popover {
+      position: fixed;
+      top: 58px;
+      right: 22px;
+      width: 248px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 14px 15px;
+      color: var(--panel-text);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
+      z-index: 65;
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .book-popover.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .book-popover .setting-section {
+      margin-bottom: 14px;
+    }
+
+    .book-popover .setting-section:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 3D Perspective Viewport */
+    .book-viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 2200px;
+      perspective-origin: 50% 48%;
+      padding: 58px 28px 66px;
+    }
+
+    /* The 3D Hardcover Book Assembly */
+    .book-assembly {
+      position: relative;
+      width: calc(var(--page-w) * 2);
+      height: var(--page-h);
+      transform-style: preserve-3d;
+      transition: transform 0.92s cubic-bezier(0.32, 0.72, 0.2, 1);
+      transform: translate3d(0, 0, 0) rotateX(3deg) rotateY(0deg);
+    }
+
+    /* Closed state: shifts left by 25% of double-spread (= half a page) so front cover sits dead-center */
+    .book-assembly.closed {
+      transform: translate3d(calc(var(--page-w) * -0.5), 4px, 0) rotateX(7deg) rotateY(-14deg);
+      cursor: pointer;
+    }
+
+    .book-assembly.closed:hover {
+      transform: translate3d(calc(var(--page-w) * -0.5), 1px, 14px) rotateX(5.5deg) rotateY(-10deg);
+    }
+
+    /* Desk contact shadow */
+    .book-shadow {
+      position: absolute;
+      left: -8px;
+      right: -8px;
+      top: 14px;
+      bottom: -24px;
+      border-radius: 14px;
+      background: radial-gradient(ellipse at 50% 54%, rgba(10, 11, 16, 0.56) 0%, rgba(10, 11, 16, 0.28) 56%, transparent 78%);
+      filter: blur(18px);
+      transform: translateZ(-26px);
+      pointer-events: none;
+      transition: opacity 0.6s ease, left 0.8s ease;
+    }
+
+    .book-assembly.closed .book-shadow {
+      left: calc(var(--page-w) - 12px);
+      right: -18px;
+      opacity: 0.92;
+    }
+
+    /* Plain-white Back Hardcover Board (sits under the right half, overhangs pages by 7px) */
+    .hardcover-back {
+      position: absolute;
+      left: 50%;
+      top: -7px;
+      width: calc(var(--page-w) + 8px);
+      height: calc(var(--page-h) + 14px);
+      border-radius: 2px 9px 9px 2px;
+      background: linear-gradient(90deg, #e7e6e2 0%, #f5f4f1 6%, #fbfaf8 92%, #ecebe7 100%);
+      box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.34),
+        0 3px 10px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset -2px 0 4px rgba(0, 0, 0, 0.08);
+      transform: translateZ(-12px);
+      pointer-events: none;
+    }
+
+    /* Plain-white Back Board on the left side when open (underneath left pages, matches front cover open state) */
+    .hardcover-spine-bridge {
+      position: absolute;
+      left: calc(50% - 10px);
+      top: -7px;
+      width: 20px;
+      height: calc(var(--page-h) + 14px);
+      background: linear-gradient(90deg, #dfded9 0%, #f4f3ef 45%, #f0efeb 55%, #dad9d4 100%);
+      border-radius: 3px;
+      box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.14);
+      transform: translateZ(-11px);
+      pointer-events: none;
+    }
+
+    /* Closed Book 3D Right Paper-Block Fore-edge (visible when book is closed & slightly angled) */
+    .closed-page-edge {
+      position: absolute;
+      left: calc(50% + var(--page-w) - 1px);
+      top: 2px;
+      width: 22px;
+      height: calc(var(--page-h) - 4px);
+      transform-origin: left center;
+      transform: translateZ(-10px) rotateY(-90deg);
+      background:
+        repeating-linear-gradient(
+          90deg,
+          #f7f3ea 0px,
+          #f7f3ea 1.5px,
+          #e2dcd0 1.5px,
+          #e2dcd0 2.5px
+        );
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.14), inset 0 -2px 6px rgba(0,0,0,0.14);
+      border-radius: 0 2px 2px 0;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .book-assembly.closed .closed-page-edge {
+      opacity: 1;
+    }
+
+    /* Closed Book 3D Spine Side (left side of closed book) */
+    .closed-spine-edge {
+      position: absolute;
+      left: 50%;
+      top: -7px;
+      width: 26px;
+      height: calc(var(--page-h) + 14px);
+      transform-origin: left center;
+      transform: translateZ(-12px) rotateY(-90deg);
+      background: linear-gradient(90deg, #e5e4e0 0%, #f8f7f4 45%, #efeeea 85%, #dcdbd6 100%);
+      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.12);
+      border-radius: 3px 0 0 3px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .book-assembly.closed .closed-spine-edge {
+      opacity: 1;
+    }
+
+    /* Subtle silk ribbon bookmark peeking delicately from bottom of spine */
+    .book-ribbon {
+      position: absolute;
+      left: calc(50% - 7px);
+      bottom: -28px;
+      width: 14px;
+      height: 36px;
+      background: linear-gradient(90deg, #d8d4cb 0%, #ebe7de 48%, #ccc7bd 100%);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+      transform: translateZ(-10px);
+      pointer-events: none;
+      opacity: 0.9;
+    }
+
+    /* Visible stacked page edges on left & right when open */
+    .page-stack-left,
+    .page-stack-right {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      pointer-events: none;
+      transition: width 0.35s ease, opacity 0.35s ease;
+      transform: translateZ(-2px);
+    }
+
+    .page-stack-left {
+      right: calc(50% + var(--page-w) - 1px);
+      width: var(--left-stack);
+      background: repeating-linear-gradient(
+        90deg,
+        #ece7dc 0px,
+        #ece7dc 1.5px,
+        #dad3c5 1.5px,
+        #dad3c5 2.5px
+      );
+      border-radius: 2px 0 0 2px;
+      box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.14);
+    }
+
+    .page-stack-right {
+      left: calc(50% + var(--page-w) - 1px);
+      width: var(--right-stack);
+      background: repeating-linear-gradient(
+        90deg,
+        #dad3c5 0px,
+        #dad3c5 1px,
+        #efeae0 1px,
+        #efeae0 2.5px
+      );
+      border-radius: 0 2px 2px 0;
+      box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.14);
+    }
+
+    .book-assembly.closed .page-stack-left,
+    .book-assembly.closed .page-stack-right {
+      opacity: 0;
+    }
+
+    /* ==================== BASE LEFT & RIGHT SPREAD PAGES ==================== */
+    .spread-page {
+      position: absolute;
+      top: 0;
+      width: var(--page-w);
+      height: var(--page-h);
+      overflow: hidden;
+      background: #faf7f0;
+      color: #1f1d1a;
+      z-index: 10;
+      transform: translateZ(1px);
+      transition: opacity 0.3s ease;
+    }
+
+    .spread-left {
+      left: 0;
+      border-radius: 4px 0 0 4px;
+      box-shadow:
+        inset -28px 0 38px -18px rgba(42, 34, 24, 0.16),
+        inset -2px 0 3px rgba(0, 0, 0, 0.08),
+        inset 1px 0 0 rgba(255, 255, 255, 0.7),
+        -2px 4px 14px rgba(0, 0, 0, 0.12);
+      cursor: pointer;
+    }
+
+    .spread-right {
+      left: 50%;
+      border-radius: 0 4px 4px 0;
+      box-shadow:
+        inset 28px 0 38px -18px rgba(42, 34, 24, 0.16),
+        inset 2px 0 3px rgba(0, 0, 0, 0.08),
+        inset -1px 0 0 rgba(255, 255, 255, 0.65),
+        2px 4px 14px rgba(0, 0, 0, 0.12);
+      cursor: pointer;
+    }
+
+    .book-assembly.closed .spread-left {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Subtle warm paper fiber overlay on every book page */
+    .spread-page::before,
+    .flip-face::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.032;
+      background-image:
+        radial-gradient(rgba(70, 56, 40, 0.75) 0.5px, transparent 0.5px),
+        radial-gradient(rgba(255, 255, 255, 0.7) 0.5px, transparent 0.5px);
+      background-size: 14px 14px, 19px 19px;
+      background-position: 0 0, 5px 8px;
+      z-index: 2;
+    }
+
+    /* Endpaper styling (inside front/back cover or blank verso) */
+    .page-is-endpaper {
+      background: linear-gradient(135deg, #f3efe6 0%, #ede8dc 100%) !important;
+    }
+
+    /* ==================== 3D FRONT HARDCOVER (PLAIN MATTE WHITE) ==================== */
+    .front-cover-leaf {
+      position: absolute;
+      left: 50%;
+      top: -7px;
+      width: calc(var(--page-w) + 8px);
+      height: calc(var(--page-h) + 14px);
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transform: translateZ(14px) rotateY(0deg);
+      transition: transform 0.92s cubic-bezier(0.32, 0.72, 0.2, 1), z-index 0s linear 0.38s;
+      z-index: 40;
+      cursor: pointer;
+    }
+
+    .book-assembly.open .front-cover-leaf {
+      transform: translateZ(-12px) rotateY(-180deg);
+      transition: transform 0.92s cubic-bezier(0.32, 0.72, 0.2, 1), z-index 0s linear 0.44s;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .cover-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 2px 9px 9px 2px;
+      overflow: hidden;
+    }
+
+    /* Front face: Plain Matte-White Hardcover with subtle linen feel & blind-printed title */
+    .cover-front {
+      background:
+        /* subtle matte cloth/paper weave */
+        repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.008) 0px,
+          rgba(0, 0, 0, 0.008) 1px,
+          transparent 1px,
+          transparent 3px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0.008) 0px,
+          rgba(0, 0, 0, 0.008) 1px,
+          transparent 1px,
+          transparent 3px
+        ),
+        /* gentle directional studio light across white cover */
+        linear-gradient(
+          115deg,
+          #fefefe 0%,
+          #f8f7f4 46%,
+          #f1f0ec 86%,
+          #e8e6e0 100%
+        );
+      box-shadow:
+        inset 1px 1px 0 rgba(255, 255, 255, 0.95),
+        inset -2px -2px 5px rgba(0, 0, 0, 0.06),
+        inset 14px 0 18px -12px rgba(0, 0, 0, 0.14);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 48px 80px 58px;
+      text-align: center;
+    }
+
+    /* Classic hardcover vertical spine hinge groove */
+    .cover-front::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 20px;
+      width: 3px;
+      background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.09) 0%,
+        rgba(255, 255, 255, 0.85) 55%,
+        rgba(0, 0, 0, 0.03) 100%
+      );
+      pointer-events: none;
+    }
+
+    /* Subtle debossed/printed title on plain white cover */
+    .cover-title-block {
+      max-width: 86%;
+      transform: translateY(-22px);
+    }
+
+    .cover-title {
+      font-family: var(--book-font);
+      font-size: clamp(20px, 2.3vw, 29px);
+      font-weight: 400;
+      line-height: 1.32;
+      letter-spacing: 0.045em;
+      color: rgba(48, 46, 44, 0.72);
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.92);
+      word-wrap: break-word;
+      margin: 0;
+    }
+
+    .cover-rule {
+      width: 34px;
+      height: 1px;
+      margin: 18px auto 0;
+      background: rgba(65, 62, 58, 0.22);
+    }
+
+    .cover-word-meta {
+      position: absolute;
+      bottom: 34px;
+      left: 24px;
+      right: 0;
+      text-align: center;
+      font-family: var(--book-font);
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(88, 85, 80, 0.42);
+    }
+
+    /* Back face of front cover: matte-white board overhang framing inside endpaper */
+    .cover-inside {
+      transform: rotateY(180deg);
+      background: linear-gradient(90deg, #eeede9 0%, #f7f6f3 12%, #f4f3ef 92%, #dfded9 100%);
+      border-radius: 9px 2px 2px 9px;
+      box-shadow:
+        inset 2px 0 4px rgba(0, 0, 0, 0.06),
+        inset -10px 0 18px rgba(0, 0, 0, 0.12),
+        -8px 18px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    /* ==================== 3D TURNING PAGE LEAF ==================== */
+    .turning-leaf {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: var(--page-w);
+      height: var(--page-h);
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      z-index: 30;
+      pointer-events: none;
+      display: none;
+      will-change: transform;
+    }
+
+    .turning-leaf.active {
+      display: block;
+    }
+
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      background: #faf7f0;
+      color: #1f1d1a;
+      overflow: hidden;
+    }
+
+    .flip-front {
+      border-radius: 0 4px 4px 0;
+      box-shadow:
+        inset 28px 0 38px -18px rgba(42, 34, 24, 0.18),
+        inset 2px 0 3px rgba(0, 0, 0, 0.09);
+    }
+
+    .flip-back {
+      transform: rotateY(180deg);
+      border-radius: 4px 0 0 4px;
+      box-shadow:
+        inset -28px 0 38px -18px rgba(42, 34, 24, 0.18),
+        inset -2px 0 3px rgba(0, 0, 0, 0.09);
+    }
+
+    /* Dynamic lighting shadow on turning leaf */
+    .flip-shade {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.34s ease;
+    }
+
+    .flip-front .flip-shade {
+      background: linear-gradient(90deg, rgba(20, 16, 12, 0.04) 0%, rgba(20, 16, 12, 0.22) 100%);
+    }
+
+    .flip-back .flip-shade {
+      background: linear-gradient(270deg, rgba(20, 16, 12, 0.04) 0%, rgba(20, 16, 12, 0.22) 100%);
+    }
+
+    .turning-leaf.turning .flip-shade {
+      opacity: 0.72;
+    }
+
+    /* ==================== REAL BOOK PAGE TYPESETTING ==================== */
+    .book-page-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      z-index: 3;
+    }
+
+    /* Publisher asymmetric book margins: slightly tighter inner gutter, generous bottom & outer */
+    .book-page-inner.verso {
+      padding: 36px 38px 34px 46px;
+    }
+
+    .book-page-inner.recto {
+      padding: 36px 46px 34px 38px;
+    }
+
+    .running-header {
+      height: 22px;
+      flex-shrink: 0;
+      text-align: center;
+      font-family: var(--book-font);
+      font-size: 9.5px;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+      color: rgba(48, 44, 38, 0.48);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 10px;
+    }
+
+    .page-body {
+      flex: 1;
+      overflow: hidden;
+      font-family: var(--book-font);
+      font-size: var(--book-font-size);
+      line-height: var(--book-line-height);
+      color: #211f1c;
+      font-kerning: normal;
+      font-variant-ligatures: common-ligatures;
+      text-rendering: optimizeLegibility;
+    }
+
+    .page-folio {
+      height: 22px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-family: var(--book-font);
+      font-size: 11px;
+      color: rgba(48, 44, 38, 0.56);
+      font-variant-numeric: oldstyle-nums;
+      margin-top: 8px;
+    }
+
+    /* Chapter Opening & Publisher Sinkage */
+    .book-chapter-head {
+      padding-top: 15%;
+      padding-bottom: 24px;
+      text-align: center;
+    }
+
+    .book-chapter-label {
+      font-size: 0.72em;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(54, 48, 42, 0.62);
+      margin-bottom: 8px;
+    }
+
+    .book-chapter-title {
+      font-size: 1.52em;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1.28;
+      color: #1c1a17;
+      margin: 0;
+    }
+
+    .book-chapter-head.title-only .book-chapter-title {
+      font-style: normal;
+      letter-spacing: 0.03em;
+    }
+
+    .book-chapter-ornament {
+      width: 28px;
+      height: 1px;
+      background: rgba(54, 48, 42, 0.24);
+      margin: 16px auto 0;
+    }
+
+    /* Paragraphs & Novel Indentation */
+    .book-p {
+      margin: 0;
+      padding: 0;
+      text-align: justify;
+      text-indent: 1.5em;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      overflow-wrap: break-word;
+    }
+
+    .book-p.flush,
+    .book-p.continuation {
+      text-indent: 0;
+    }
+
+    .book-p.continued-next {
+      text-align-last: justify;
+    }
+
+    /* True 3-line Drop Cap */
+    .book-p.has-dropcap {
+      text-indent: 0;
+    }
+
+    .dropcap-quote {
+      float: left;
+      font-size: 1.55em;
+      line-height: 1;
+      padding-top: 0.14em;
+      margin-right: 0.06em;
+      color: rgba(34, 31, 28, 0.65);
+    }
+
+    .dropcap-letter {
+      float: left;
+      font-family: var(--book-font);
+      font-size: 3.55em;
+      line-height: 0.78;
+      padding-top: 0.08em;
+      padding-right: 0.11em;
+      padding-bottom: 0.03em;
+      font-weight: 400;
+      color: #171512;
+    }
+
+    .dropcap-lead {
+      font-variant: small-caps;
+      letter-spacing: 0.04em;
+    }
+
+    /* Scene Break (* * *) */
+    .book-scene-break {
+      text-align: center;
+      padding: 1.05em 0;
+      letter-spacing: 0.65em;
+      padding-left: 0.65em;
+      font-size: 0.85em;
+      color: rgba(45, 41, 36, 0.55);
+      user-select: none;
+    }
+
+    /* Subtle Colophon / Endpaper Page */
+    .endpaper-mark {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: rgba(65, 60, 54, 0.34);
+      font-family: var(--book-font);
+      font-style: italic;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+    }
+
+    /* Bottom Book Controls Bar */
+    .book-bottombar {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 60;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(24, 26, 32, 0.34);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: var(--hud-ink);
+      font-size: 12px;
+    }
+
+    body[data-mood="daylight"] .book-bottombar {
+      background: rgba(255, 255, 255, 0.58);
+      border-color: rgba(0, 0, 0, 0.09);
+    }
+
+    .book-step-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-size: 12.5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .book-step-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    body[data-mood="daylight"] .book-step-btn:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.07);
+    }
+
+    .book-step-btn:disabled {
+      opacity: 0.32;
+      cursor: default;
+    }
+
+    .book-hint {
+      opacity: 0.72;
+      padding: 0 6px;
+      white-space: nowrap;
+    }
+
+    /* Hidden offscreen page measurement container */
+    #book-measure-host {
+      position: fixed;
+      top: -99999px;
+      left: -99999px;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
     /* ==================== DRAWERS ==================== */
     .backdrop {
       position: fixed;
@@ -556,7 +1355,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.22s ease;
-      z-index: 40;
+      z-index: 70;
     }
 
     .backdrop.open {
@@ -577,7 +1376,7 @@
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
       box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48);
-      z-index: 50;
+      z-index: 80;
       display: flex;
       flex-direction: column;
       transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s;
@@ -679,7 +1478,6 @@
       background: rgba(255, 255, 255, 0.13);
     }
 
-    /* Drafts List */
     .search-box {
       width: 100%;
       padding: 8px 11px;
@@ -765,7 +1563,6 @@
       color: #ff9c9c;
     }
 
-    /* Settings Controls */
     .setting-section {
       margin-bottom: 20px;
     }
@@ -911,7 +1708,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s, transform 0.2s;
-      z-index: 80;
+      z-index: 95;
     }
 
     .toast.show {
@@ -934,7 +1731,7 @@
         overflow: visible !important;
         height: auto !important;
       }
-      .stage, .hud, .platen-footer, .backdrop, .drawer, .toast, .ink-caret, #caret-mirror {
+      .stage, .book-stage, .hud, .platen-footer, .backdrop, .drawer, .toast, .ink-caret, #caret-mirror, #book-measure-host {
         display: none !important;
       }
       #print-view {
@@ -980,6 +1777,10 @@
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">Saved locally</span>
       </span>
+      <button class="hud-btn" id="btn-book" title="View as 3D Book (⌘B)">
+        <svg viewBox="0 0 24 24"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H12v18H4.5A2.5 2.5 0 0 0 2 23.5v-18z"/><path d="M22 5.5A2.5 2.5 0 0 0 19.5 3H12v18h7.5a2.5 2.5 0 0 1 2.5 2.5v-18z"/></svg>
+        <span>Book</span>
+      </button>
       <button class="hud-btn" id="btn-sound" title="Toggle Mechanical Sound">
         <svg id="icon-sound-on" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
         <svg id="icon-sound-off" viewBox="0 0 24 24" style="display:none"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
@@ -1029,11 +1830,115 @@
   <!-- Subtle Lower Platen Footer -->
   <footer class="platen-footer">
     <span id="word-count">0 words</span>
-    <span id="shortcut-hint">⌘K Drafts · ⌘, Studio · ⌘P Print PDF</span>
+    <span id="shortcut-hint">⌘K Drafts · ⌘B Book · ⌘, Studio · ⌘P Print PDF</span>
   </footer>
 
-  <!-- Hidden Caret Mirror -->
+  <!-- ==================== 3D BOOK MODE STAGE ==================== -->
+  <section class="book-stage" id="book-stage" aria-label="3D Book Preview">
+    <div class="book-topbar">
+      <div class="hud-group">
+        <button class="hud-btn" id="btn-back-typewriter" title="Back to Typewriter (Esc or ⌘B)">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          <span>Typewriter</span>
+        </button>
+      </div>
+
+      <div class="book-nav-center" id="book-status-label">Hardcover</div>
+
+      <div class="hud-group">
+        <button class="hud-btn" id="btn-toggle-cover" title="Open or Close Hardcover">
+          <span id="label-toggle-cover">Open Book</span>
+        </button>
+        <button class="hud-btn" id="btn-book-typo" title="Book Typography">
+          <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+          <span>Typeset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Minimal Book Typography Popover -->
+    <div class="book-popover" id="book-popover">
+      <div class="setting-section">
+        <h4>Book Typeface</h4>
+        <div class="segmented" id="book-font-selector">
+          <button class="seg-btn active" data-bfont="baskerville">Baskerville</button>
+          <button class="seg-btn" data-bfont="iowan">Iowan</button>
+          <button class="seg-btn" data-bfont="palatino">Palatino</button>
+        </div>
+      </div>
+      <div class="setting-section">
+        <h4>Type Size</h4>
+        <div class="segmented" id="book-size-selector">
+          <button class="seg-btn" data-bsize="13">Compact</button>
+          <button class="seg-btn active" data-bsize="14.5">Classic</button>
+          <button class="seg-btn" data-bsize="16">Large</button>
+        </div>
+      </div>
+      <div class="setting-section">
+        <div class="toggle-row" style="padding:2px 0;">
+          <div>
+            <div>Drop Caps</div>
+            <div class="toggle-sub">Large chapter opening letters</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-dropcaps" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="book-viewport" id="book-viewport">
+      <div class="book-assembly closed" id="book-assembly">
+        <div class="book-shadow"></div>
+        <div class="hardcover-back"></div>
+        <div class="hardcover-spine-bridge"></div>
+        <div class="closed-page-edge"></div>
+        <div class="closed-spine-edge"></div>
+        <div class="book-ribbon"></div>
+        <div class="page-stack-left"></div>
+        <div class="page-stack-right"></div>
+
+        <!-- Static Left & Right Open Spread Pages -->
+        <div class="spread-page spread-left" id="spread-left" title="Previous page (←)"></div>
+        <div class="spread-page spread-right" id="spread-right" title="Next page (→)"></div>
+
+        <!-- 3D Turning Page Leaf -->
+        <div class="turning-leaf" id="turning-leaf">
+          <div class="flip-face flip-front" id="flip-front">
+            <div class="flip-shade"></div>
+            <div id="flip-front-content" style="width:100%;height:100%;"></div>
+          </div>
+          <div class="flip-face flip-back" id="flip-back">
+            <div class="flip-shade"></div>
+            <div id="flip-back-content" style="width:100%;height:100%;"></div>
+          </div>
+        </div>
+
+        <!-- 3D Matte-White Front Hardcover -->
+        <div class="front-cover-leaf" id="front-cover-leaf" title="Click to open book">
+          <div class="cover-face cover-front">
+            <div class="cover-title-block">
+              <h1 class="cover-title" id="book-cover-title">Untitled Page</h1>
+              <div class="cover-rule"></div>
+            </div>
+            <div class="cover-word-meta" id="book-cover-meta">First Edition</div>
+          </div>
+          <div class="cover-face cover-inside"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="book-bottombar" id="book-bottombar">
+      <button class="book-step-btn" id="btn-prev-page">← Prev</button>
+      <span class="book-hint" id="book-bottom-hint">Click cover to open</span>
+      <button class="book-step-btn" id="btn-next-page">Next →</button>
+    </div>
+  </section>
+
+  <!-- Hidden Measurement Mirrors -->
   <div id="caret-mirror" aria-hidden="true"></div>
+  <div id="book-measure-host" aria-hidden="true"></div>
 
   <!-- Drawer Backdrop -->
   <div class="backdrop" id="backdrop"></div>
@@ -1187,6 +2092,7 @@
 
       const btnDrafts = document.getElementById('btn-drafts');
       const btnSettings = document.getElementById('btn-settings');
+      const btnBook = document.getElementById('btn-book');
       const btnSound = document.getElementById('btn-sound');
       const iconSoundOn = document.getElementById('icon-sound-on');
       const iconSoundOff = document.getElementById('icon-sound-off');
@@ -1205,10 +2111,39 @@
       const toggleBell = document.getElementById('toggle-bell');
       const toggleStrict = document.getElementById('toggle-strict');
 
+      // Book Mode elements
+      const bookStage = document.getElementById('book-stage');
+      const bookAssembly = document.getElementById('book-assembly');
+      const frontCoverLeaf = document.getElementById('front-cover-leaf');
+      const bookCoverTitle = document.getElementById('book-cover-title');
+      const bookCoverMeta = document.getElementById('book-cover-meta');
+      const spreadLeft = document.getElementById('spread-left');
+      const spreadRight = document.getElementById('spread-right');
+      const turningLeaf = document.getElementById('turning-leaf');
+      const flipFrontContent = document.getElementById('flip-front-content');
+      const flipBackContent = document.getElementById('flip-back-content');
+      const bookStatusLabel = document.getElementById('book-status-label');
+      const bookBottomHint = document.getElementById('book-bottom-hint');
+      const btnBackTypewriter = document.getElementById('btn-back-typewriter');
+      const btnToggleCover = document.getElementById('btn-toggle-cover');
+      const labelToggleCover = document.getElementById('label-toggle-cover');
+      const btnBookTypo = document.getElementById('btn-book-typo');
+      const bookPopover = document.getElementById('book-popover');
+      const btnPrevPage = document.getElementById('btn-prev-page');
+      const btnNextPage = document.getElementById('btn-next-page');
+      const toggleDropcaps = document.getElementById('toggle-dropcaps');
+      const bookMeasureHost = document.getElementById('book-measure-host');
+
       const FONTS = {
         typewriter: "'Courier Prime', 'American Typewriter', 'Courier New', 'SF Mono', ui-monospace, monospace",
         mono: "'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco', ui-monospace, monospace",
         serif: "'Iowan Old Style', 'Georgia', 'Baskerville', serif"
+      };
+
+      const BOOK_FONTS = {
+        baskerville: "'Baskerville', 'Libre Baskerville', 'Georgia', serif",
+        iowan: "'Iowan Old Style', 'Charter', 'Georgia', serif",
+        palatino: "'Palatino', 'Palatino Linotype', 'Book Antiqua', serif"
       };
 
       // ==================== STATE ====================
@@ -1217,7 +2152,7 @@
 
       let settings = {
         mood: 'studio',
-        warmth: 62, // 0 (4200K ivory) -> 62 (2500K slightly warm tungsten) -> 100 (1950K deep amber)
+        warmth: 62,
         font: 'typewriter',
         fontSize: 18,
         colWidth: 64,
@@ -1225,7 +2160,10 @@
         volume: 0.75,
         marginBell: true,
         strictMode: false,
-        activeDraftId: null
+        activeDraftId: null,
+        bookFont: 'baskerville',
+        bookFontSize: 14.5,
+        bookDropCaps: true
       };
 
       let drafts = [];
@@ -1235,6 +2173,14 @@
       let typingCaretTimer = null;
       let toastTimer = null;
       let bellRangOnLine = -1;
+
+      // Book Mode state
+      let isBookMode = false;
+      let bookOpen = false;
+      let bookPages = []; // array of { html, pageNum, chapterName, isEndpaper, isChapterStart }
+      let spreadIndex = 0; // 0 = [endpaper, Page 1], 1 = [Page 2, Page 3], etc.
+      let isTurning = false;
+      let resizeBookTimer = null;
 
       // ==================== INDEXEDDB STORAGE ====================
       const DB_NAME = 'StudioTypewriterDB';
@@ -1330,7 +2276,7 @@
         } catch {}
       }
 
-      // ==================== MECHANICAL AUDIO ENGINE (100% OFFLINE) ====================
+      // ==================== MECHANICAL & BOOK AUDIO ENGINE (100% OFFLINE) ====================
       const AudioEngine = (() => {
         let ctx = null;
         let noiseBuffer = null;
@@ -1340,8 +2286,7 @@
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return null;
             ctx = new AudioCtx();
-            // Create reusable short white-noise buffer for mechanical transients
-            const len = Math.floor(ctx.sampleRate * 0.25);
+            const len = Math.floor(ctx.sampleRate * 0.45);
             noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
             const data = noiseBuffer.getChannelData(0);
             for (let i = 0; i < len; i++) {
@@ -1363,42 +2308,33 @@
           if (vol <= 0) return;
           const ac = ensureContext();
           if (!ac) return;
-
           const now = ac.currentTime;
-          // Subtle deterministic + micro-random variation per key
           const variance = ((charCode % 13) - 6) * 28 + (Math.random() - 0.5) * 90;
 
-          // 1. Crisp hammer strike transient (bandpass noise burst)
           const noise = ac.createBufferSource();
           noise.buffer = noiseBuffer;
           const bp = ac.createBiquadFilter();
           bp.type = 'bandpass';
           bp.frequency.setValueAtTime(2400 + variance, now);
           bp.Q.setValueAtTime(2.4, now);
-
           const nGain = ac.createGain();
           nGain.gain.setValueAtTime(0.32 * vol, now);
           nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
-
           noise.connect(bp).connect(nGain).connect(ac.destination);
           noise.start(now);
           noise.stop(now + 0.036);
 
-          // 2. Platen roller body thump
           const osc = ac.createOscillator();
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(175 + (charCode % 7) * 8, now);
           osc.frequency.exponentialRampToValueAtTime(58, now + 0.035);
-
           const oGain = ac.createGain();
           oGain.gain.setValueAtTime(0.24 * vol, now);
           oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-
           osc.connect(oGain).connect(ac.destination);
           osc.start(now);
           osc.stop(now + 0.045);
 
-          // 3. Tiny metallic typebar snap
           const click = ac.createOscillator();
           click.type = 'square';
           click.frequency.setValueAtTime(4200 + variance * 0.8, now + 0.003);
@@ -1417,12 +2353,10 @@
           if (!ac) return;
           const now = ac.currentTime;
 
-          // Deeper mechanical spacebar clunk
           const osc = ac.createOscillator();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(125, now);
           osc.frequency.exponentialRampToValueAtTime(44, now + 0.065);
-
           const g = ac.createGain();
           g.gain.setValueAtTime(0.34 * vol, now);
           g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
@@ -1449,8 +2383,6 @@
           const ac = ensureContext();
           if (!ac) return;
           const now = ac.currentTime;
-
-          // Double metallic ratchet tick
           [0, 0.022].forEach((offset, i) => {
             const noise = ac.createBufferSource();
             noise.buffer = noiseBuffer;
@@ -1458,7 +2390,6 @@
             hp.type = 'bandpass';
             hp.frequency.setValueAtTime(i === 0 ? 1800 : 2900, now + offset);
             hp.Q.setValueAtTime(4.0, now + offset);
-
             const g = ac.createGain();
             g.gain.setValueAtTime(0.18 * vol, now + offset);
             g.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.02);
@@ -1475,7 +2406,6 @@
           if (!ac) return;
           const now = ac.currentTime;
 
-          // Carriage zip (filtered noise sweep)
           const zip = ac.createBufferSource();
           zip.buffer = noiseBuffer;
           const bp = ac.createBiquadFilter();
@@ -1483,7 +2413,6 @@
           bp.frequency.setValueAtTime(900, now);
           bp.frequency.exponentialRampToValueAtTime(2200, now + 0.14);
           bp.Q.setValueAtTime(3.2, now);
-
           const zg = ac.createGain();
           zg.gain.setValueAtTime(0.001, now);
           zg.gain.linearRampToValueAtTime(0.2 * vol, now + 0.03);
@@ -1492,7 +2421,6 @@
           zip.start(now);
           zip.stop(now + 0.18);
 
-          // Platen line-feed click + stop thud
           const thud = ac.createOscillator();
           thud.type = 'triangle';
           thud.frequency.setValueAtTime(140, now + 0.14);
@@ -1511,12 +2439,9 @@
           const ac = ensureContext();
           if (!ac) return;
           const now = ac.currentTime;
-
-          // Shimmering brass margin bell partials
           const freqs = [2420, 4860, 7210];
           const amps = [0.16, 0.06, 0.025];
           const decays = [0.95, 0.55, 0.28];
-
           freqs.forEach((f, idx) => {
             const osc = ac.createOscillator();
             osc.type = 'sine';
@@ -1530,7 +2455,68 @@
           });
         }
 
-        return { playKey, playSpace, playBackspace, playReturn, playBell };
+        function playPageTurn() {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Soft paper sweep
+          const src = ac.createBufferSource();
+          src.buffer = noiseBuffer;
+          const bp = ac.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(1050, now);
+          bp.frequency.exponentialRampToValueAtTime(2400, now + 0.11);
+          bp.frequency.exponentialRampToValueAtTime(880, now + 0.27);
+          bp.Q.setValueAtTime(1.4, now);
+
+          const gain = ac.createGain();
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.11 * vol, now + 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.29);
+
+          src.connect(bp).connect(gain).connect(ac.destination);
+          src.start(now);
+          src.stop(now + 0.31);
+        }
+
+        function playBookCover(opening = true) {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Soft cloth hardcover rustle + subtle board settle
+          const src = ac.createBufferSource();
+          src.buffer = noiseBuffer;
+          const lp = ac.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.setValueAtTime(opening ? 1300 : 900, now);
+          const ng = ac.createGain();
+          ng.gain.setValueAtTime(0.001, now);
+          ng.gain.linearRampToValueAtTime(0.09 * vol, now + 0.09);
+          ng.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+          src.connect(lp).connect(ng).connect(ac.destination);
+          src.start(now);
+          src.stop(now + 0.36);
+
+          const thump = ac.createOscillator();
+          thump.type = 'sine';
+          const t0 = opening ? now + 0.26 : now + 0.22;
+          thump.frequency.setValueAtTime(opening ? 95 : 82, t0);
+          thump.frequency.exponentialRampToValueAtTime(38, t0 + 0.11);
+          const tg = ac.createGain();
+          tg.gain.setValueAtTime((opening ? 0.12 : 0.22) * vol, t0);
+          tg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+          thump.connect(tg).connect(ac.destination);
+          thump.start(t0);
+          thump.stop(t0 + 0.13);
+        }
+
+        return { playKey, playSpace, playBackspace, playReturn, playBell, playPageTurn, playBookCover };
       })();
 
       // ==================== WARMTH & VISUAL THEME ====================
@@ -1539,7 +2525,6 @@
       }
 
       function applyWarmth(val) {
-        // val: 0 (4200K ivory) -> 62 (2500K tungsten) -> 100 (1950K deep amber)
         const t = val / 100;
         const kelvin = Math.round(
           t <= 0.62
@@ -1584,6 +2569,8 @@
         root.setProperty('--font-family', FONTS[settings.font] || FONTS.typewriter);
         root.setProperty('--font-size', `${settings.fontSize}px`);
         root.setProperty('--col-width', `${settings.colWidth}ch`);
+        root.setProperty('--book-font', BOOK_FONTS[settings.bookFont] || BOOK_FONTS.baskerville);
+        root.setProperty('--book-font-size', `${settings.bookFontSize}px`);
 
         rangeWarmth.value = settings.warmth;
         rangeSize.value = settings.fontSize;
@@ -1594,6 +2581,7 @@
         volReadout.textContent = `${Math.round(settings.volume * 100)}%`;
         toggleBell.checked = settings.marginBell;
         toggleStrict.checked = settings.strictMode;
+        toggleDropcaps.checked = settings.bookDropCaps;
 
         iconSoundOn.style.display = settings.soundEnabled ? '' : 'none';
         iconSoundOff.style.display = settings.soundEnabled ? 'none' : '';
@@ -1605,18 +2593,25 @@
         document.querySelectorAll('#font-selector .seg-btn').forEach((b) => {
           b.classList.toggle('active', b.dataset.font === settings.font);
         });
+        document.querySelectorAll('#book-font-selector .seg-btn').forEach((b) => {
+          b.classList.toggle('active', b.dataset.bfont === settings.bookFont);
+        });
+        document.querySelectorAll('#book-size-selector .seg-btn').forEach((b) => {
+          b.classList.toggle('active', Number(b.dataset.bsize) === Number(settings.bookFontSize));
+        });
 
         applyWarmth(settings.warmth);
         requestAnimationFrame(updateMechanics);
       }
 
-      // ==================== CARRIAGE & FIXED-LINE MECHANICS ====================
+      // ==================== CARRIAGE & ALIGNED CARET MECHANICS ====================
       function autoGrowTextarea() {
         editor.style.height = 'auto';
         editor.style.height = `${Math.max(200, editor.scrollHeight + 40)}px`;
       }
 
       function updateMechanics() {
+        if (isBookMode) return;
         autoGrowTextarea();
 
         const rect = editor.getBoundingClientRect();
@@ -1632,7 +2627,6 @@
         const selPos = editor.selectionEnd || 0;
         const textBefore = editor.value.slice(0, selPos);
 
-        // Build mirror safely
         caretMirror.textContent = textBefore;
         const marker = document.createElement('span');
         marker.textContent = '\u200b';
@@ -1642,17 +2636,21 @@
         const markerRect = marker.getBoundingClientRect();
 
         const relX = markerRect.left - mirrorRect.left;
-        const relY = markerRect.top - mirrorRect.top;
+        const glyphTop = markerRect.top - mirrorRect.top;
         const lineHeightPx = parseFloat(style.lineHeight) || settings.fontSize * 1.72;
+        const glyphHeight = (markerRect.height && markerRect.height > 4)
+          ? markerRect.height
+          : settings.fontSize * 1.15;
+        const glyphBottom = glyphTop + glyphHeight;
 
-        // Keep active typing baseline locked just above the 75vh platen track
+        // Anchor the actual bottom of the active glyph box right above the T-guide
         const platenY = window.innerHeight * 0.75;
-        const baselineClearance = 24; // room for crisp T-guide
-        const targetSheetTop = platenY - baselineClearance - (relY + lineHeightPx * 0.85);
+        const baselineClearance = 25;
+        const targetBaselineY = platenY - baselineClearance;
+        const targetSheetTop = targetBaselineY - glyphBottom;
 
         paperSheet.style.transform = `translate3d(-50%, ${targetSheetTop}px, 0)`;
 
-        // Compute horizontal caret screen X
         const sheetLeft = (window.innerWidth - rect.width) / 2;
         const caretScreenX = Math.max(
           48,
@@ -1661,12 +2659,15 @@
 
         document.documentElement.style.setProperty('--cx', `${caretScreenX}px`);
 
-        // Position custom crisp ink caret right above the T-guide
+        // Center the flashing caret directly against the letters' visual vertical midpoint
+        const caretHeight = Math.round(glyphHeight * 0.94);
+        const caretCenterY = targetBaselineY - glyphHeight * 0.52;
+        inkCaret.style.height = `${caretHeight}px`;
         inkCaret.style.left = `${caretScreenX}px`;
-        inkCaret.style.top = `${platenY - baselineClearance + 2}px`;
+        inkCaret.style.top = `${caretCenterY}px`;
 
-        // Check margin bell (near right margin of visual line)
-        const lineIndex = Math.round(relY / lineHeightPx);
+        // Margin bell check
+        const lineIndex = Math.round(glyphTop / lineHeightPx);
         const progress = relX / Math.max(1, rect.width);
         if (progress > 0.87 && bellRangOnLine !== lineIndex) {
           bellRangOnLine = lineIndex;
@@ -1674,6 +2675,641 @@
         } else if (progress < 0.72 && bellRangOnLine === lineIndex) {
           bellRangOnLine = -1;
         }
+      }
+
+      // ==================== 3D BOOK MODE: TYPESETTING & PAGINATION ====================
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function smartTypographize(raw) {
+        let s = raw;
+        // Double hyphen or spaced hyphen-hyphen -> em-dash
+        s = s.replace(/\s*--\s*/g, '\u2014');
+        // Three dots -> true ellipsis
+        s = s.replace(/\.\.\./g, '\u2026');
+        // Opening double quotes (start of string, after whitespace, open paren, or em-dash)
+        s = s.replace(/(^|[\s(\[\u2014\u2018])"(?=\S)/g, '$1\u201C');
+        // Remaining double quotes -> closing double quotes
+        s = s.replace(/"/g, '\u201D');
+        // Opening single quotes
+        s = s.replace(/(^|[\s(\[\u2014\u201C])'(?=\S)/g, '$1\u2018');
+        // Apostrophes & closing single quotes
+        s = s.replace(/'/g, '\u2019');
+        return s;
+      }
+
+      function detectChapterHeading(line) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.length > 90) return null;
+
+        // Markdown heading (# Title or ## Title)
+        const mdMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+        if (mdMatch) {
+          return { label: '', title: smartTypographize(mdMatch[1].trim()), titleOnly: true };
+        }
+
+        // Classic chapter/part headings: "Chapter 1", "CHAPTER ONE: The Rain", "Prologue", "Part II - Winter"
+        const chapRegex = /^(chapter|part|book|prologue|epilogue|preface|introduction|foreword|afterword|interlude|act|scene)(\s+[0-9ivxlcdm]+|\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty))?(?:\s*[:\-\u2014]\s*(.+))?$/i;
+        const m = trimmed.match(chapRegex);
+        if (m) {
+          const headWord = m[1];
+          const numPart = (m[2] || '').trim();
+          const subTitle = (m[3] || '').trim();
+          const labelText = (headWord + (numPart ? ' ' + numPart : '')).trim();
+          if (subTitle) {
+            return { label: labelText, title: smartTypographize(subTitle), titleOnly: false };
+          }
+          // Standalone Prologue/Epilogue vs numbered Chapter 1
+          if (!numPart) {
+            return { label: '', title: smartTypographize(labelText), titleOnly: true };
+          }
+          return { label: '', title: smartTypographize(labelText), titleOnly: true };
+        }
+
+        return null;
+      }
+
+      function isSceneBreakLine(line) {
+        const t = line.trim();
+        return /^(\*\s*\*\s*\*|-\s*-\s*-|~\s*~\s*~|#\s*#\s*#|•\s*•\s*•|\*\*\*|---|===)$/.test(t);
+      }
+
+      function parseDraftIntoBlocks(rawText, draftTitle) {
+        const normalized = rawText.replace(/\r\n/g, '\n');
+        const lines = normalized.split('\n');
+        const blocks = [];
+
+        let blankRun = 0;
+        let hasExplicitChapter = false;
+        let nextIsChapterStart = true;
+        let nextIsFlush = true;
+
+        // First scan: check if draft uses explicit chapters
+        for (let i = 0; i < lines.length; i++) {
+          if (detectChapterHeading(lines[i])) {
+            hasExplicitChapter = true;
+            break;
+          }
+        }
+
+        // If no explicit chapter headings, open page 1 with the draft title cleanly
+        if (!hasExplicitChapter) {
+          blocks.push({
+            type: 'chapter',
+            label: '',
+            title: smartTypographize(draftTitle || 'Untitled Page'),
+            titleOnly: true
+          });
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+
+          if (!trimmed) {
+            blankRun++;
+            continue;
+          }
+
+          // 2+ consecutive blank lines -> intentional scene break (unless we're right after a chapter heading)
+          if (blankRun >= 2 && blocks.length > 0 && blocks[blocks.length - 1].type === 'paragraph') {
+            blocks.push({ type: 'scene-break' });
+            nextIsFlush = true;
+          }
+          blankRun = 0;
+
+          if (isSceneBreakLine(trimmed)) {
+            if (blocks.length > 0 && blocks[blocks.length - 1].type !== 'scene-break' && blocks[blocks.length - 1].type !== 'chapter') {
+              blocks.push({ type: 'scene-break' });
+              nextIsFlush = true;
+            }
+            continue;
+          }
+
+          const chapter = detectChapterHeading(trimmed);
+          if (chapter) {
+            // Check if the very next non-empty short line (without trailing period) is a subtitle to a numbered "Chapter 1"
+            if (chapter.titleOnly && /^chapter\s+/i.test(chapter.title) && i + 1 < lines.length) {
+              const nextLine = lines[i + 1].trim();
+              if (
+                nextLine &&
+                nextLine.length <= 56 &&
+                !/[.!?"\u201D]$/.test(nextLine) &&
+                !detectChapterHeading(nextLine) &&
+                !isSceneBreakLine(nextLine) &&
+                (i + 2 >= lines.length || !lines[i + 2].trim())
+              ) {
+                chapter.label = chapter.title;
+                chapter.title = smartTypographize(nextLine);
+                chapter.titleOnly = false;
+                i++;
+              }
+            }
+            blocks.push({ type: 'chapter', ...chapter });
+            nextIsChapterStart = true;
+            nextIsFlush = true;
+            continue;
+          }
+
+          // Regular prose / dialogue paragraph
+          const smartText = smartTypographize(trimmed);
+          blocks.push({
+            type: 'paragraph',
+            text: smartText,
+            isDropCap: nextIsChapterStart && settings.bookDropCaps,
+            isFlush: nextIsFlush || nextIsChapterStart
+          });
+          nextIsChapterStart = false;
+          nextIsFlush = false;
+        }
+
+        return blocks;
+      }
+
+      function renderParagraphHtml(text, opts = {}) {
+        const { isDropCap = false, isFlush = false, isContinuation = false, continuedNext = false } = opts;
+        const classes = ['book-p'];
+        if (isFlush) classes.push('flush');
+        if (isContinuation) classes.push('continuation');
+        if (continuedNext) classes.push('continued-next');
+
+        if (isDropCap && text.length >= 2) {
+          // Handle opening quotation mark gracefully beside the drop cap
+          let quotePrefix = '';
+          let work = text;
+          if (/^[\u201C\u2018]/.test(work) && work.length >= 3) {
+            quotePrefix = `<span class="dropcap-quote">${escapeHtml(work[0])}</span>`;
+            work = work.slice(1);
+          }
+
+          // Find first alphanumeric letter for drop cap
+          if (/^[A-Za-z0-9\u00C0-\u024F]/.test(work)) {
+            classes.push('has-dropcap');
+            const firstChar = escapeHtml(work[0]);
+            const rest = work.slice(1);
+
+            // Subtle small-caps lead-in for the first ~2-3 words of the chapter
+            const words = rest.split(/(\s+)/);
+            let leadTokens = [];
+            let wordCount = 0;
+            let idx = 0;
+            while (idx < words.length && wordCount < 3) {
+              leadTokens.push(words[idx]);
+              if (words[idx].trim()) wordCount++;
+              idx++;
+            }
+            const leadText = escapeHtml(leadTokens.join(''));
+            const tailText = escapeHtml(words.slice(idx).join(''));
+
+            return `<p class="${classes.join(' ')}">${quotePrefix}<span class="dropcap-letter">${firstChar}</span><span class="dropcap-lead">${leadText}</span>${tailText}</p>`;
+          }
+        }
+
+        return `<p class="${classes.join(' ')}">${escapeHtml(text)}</p>`;
+      }
+
+      function renderChapterHeadHtml(block) {
+        const cls = block.titleOnly ? 'book-chapter-head title-only' : 'book-chapter-head';
+        const labelHtml = block.label ? `<div class="book-chapter-label">${escapeHtml(block.label)}</div>` : '';
+        return `<div class="${cls}">${labelHtml}<h2 class="book-chapter-title">${escapeHtml(block.title)}</h2><div class="book-chapter-ornament"></div></div>`;
+      }
+
+      function computeBookDimensions() {
+        const availW = window.innerWidth - 76;
+        const availH = window.innerHeight - 150;
+        const ratio = 0.68; // Classic hardcover width : height
+
+        let pageH = Math.min(640, Math.max(380, availH));
+        let pageW = Math.round(pageH * ratio);
+
+        if (pageW * 2 > availW) {
+          pageW = Math.max(240, Math.floor(availW / 2));
+          pageH = Math.round(pageW / ratio);
+        }
+
+        document.documentElement.style.setProperty('--page-w', `${pageW}px`);
+        document.documentElement.style.setProperty('--page-h', `${pageH}px`);
+        return { pageW, pageH };
+      }
+
+      function buildPaginatedBook() {
+        const { pageW, pageH } = computeBookDimensions();
+        const draftTitle = (docTitleInput.value.trim() || 'Untitled Page');
+        const rawText = editor.value || '';
+
+        bookCoverTitle.textContent = draftTitle;
+        const wc = countWords(rawText);
+        bookCoverMeta.textContent = wc > 0
+          ? `${wc.toLocaleString()} ${wc === 1 ? 'word' : 'words'}`
+          : 'Unwritten Manuscript';
+
+        const blocks = parseDraftIntoBlocks(rawText, draftTitle);
+
+        // Configure offscreen exact page-body measurement box
+        // Matches .book-page-inner (padding: 36px 46px 34px 38px) minus running header (32px) & folio (30px)
+        const innerW = pageW - (46 + 38);
+        const innerH = pageH - (36 + 34) - 32 - 30 - 4;
+
+        bookMeasureHost.innerHTML = '';
+        const measureBox = document.createElement('div');
+        measureBox.className = 'page-body';
+        measureBox.style.width = `${innerW}px`;
+        measureBox.style.height = 'auto';
+        measureBox.style.overflow = 'visible';
+        bookMeasureHost.appendChild(measureBox);
+
+        const pages = [];
+        let curHtmlParts = [];
+        let curChapterName = draftTitle;
+        let curIsChapterStart = false;
+
+        function flushPage() {
+          if (curHtmlParts.length === 0) return;
+          pages.push({
+            bodyHtml: curHtmlParts.join(''),
+            pageNum: pages.length + 1,
+            chapterName: curChapterName,
+            isChapterStart: curIsChapterStart,
+            isEndpaper: false
+          });
+          curHtmlParts = [];
+          curIsChapterStart = false;
+          measureBox.innerHTML = '';
+        }
+
+        function fits(candidateHtml) {
+          measureBox.innerHTML = curHtmlParts.join('') + candidateHtml;
+          return measureBox.scrollHeight <= innerH + 1;
+        }
+
+        for (let b = 0; b < blocks.length; b++) {
+          const block = blocks[b];
+
+          if (block.type === 'chapter') {
+            if (curHtmlParts.length > 0) flushPage();
+            curChapterName = block.title || draftTitle;
+            curIsChapterStart = true;
+            const headHtml = renderChapterHeadHtml(block);
+            curHtmlParts.push(headHtml);
+            measureBox.innerHTML = headHtml;
+            continue;
+          }
+
+          if (block.type === 'scene-break') {
+            if (curHtmlParts.length === 0) continue; // Don't start a fresh page with a scene break
+            const sbHtml = '<div class="book-scene-break">* * *</div>';
+            if (fits(sbHtml)) {
+              curHtmlParts.push(sbHtml);
+            } else {
+              flushPage();
+            }
+            continue;
+          }
+
+          if (block.type === 'paragraph') {
+            let remainingText = block.text;
+            let isDropCap = block.isDropCap;
+            let isFlush = block.isFlush;
+            let isContinuation = false;
+            let safety = 0;
+
+            while (remainingText.length > 0 && safety < 40) {
+              safety++;
+              const fullHtml = renderParagraphHtml(remainingText, {
+                isDropCap,
+                isFlush,
+                isContinuation,
+                continuedNext: false
+              });
+
+              if (fits(fullHtml)) {
+                curHtmlParts.push(fullHtml);
+                remainingText = '';
+                break;
+              }
+
+              // Binary search word boundary to split cleanly onto next page
+              const words = remainingText.split(' ');
+              let lo = 1;
+              let hi = words.length - 1;
+              let bestFit = 0;
+
+              while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                const slice = words.slice(0, mid).join(' ');
+                const testHtml = renderParagraphHtml(slice, {
+                  isDropCap,
+                  isFlush,
+                  isContinuation,
+                  continuedNext: true
+                });
+                if (fits(testHtml)) {
+                  bestFit = mid;
+                  lo = mid + 1;
+                } else {
+                  hi = mid - 1;
+                }
+              }
+
+              if (bestFit === 0) {
+                // Nothing from this paragraph fits on the current page
+                if (curHtmlParts.length > 0) {
+                  flushPage();
+                  continue; // retry on fresh page
+                } else {
+                  // Single giant word/line taller than page: force place to avoid infinite loop
+                  curHtmlParts.push(fullHtml);
+                  remainingText = '';
+                  break;
+                }
+              }
+
+              // Place fitting portion on current page, continue remainder on next page
+              const part1 = words.slice(0, bestFit).join(' ');
+              const part2 = words.slice(bestFit).join(' ').trim();
+              curHtmlParts.push(renderParagraphHtml(part1, {
+                isDropCap,
+                isFlush,
+                isContinuation,
+                continuedNext: part2.length > 0
+              }));
+              flushPage();
+
+              remainingText = part2;
+              isDropCap = false;
+              isFlush = false;
+              isContinuation = true;
+            }
+          }
+        }
+
+        if (curHtmlParts.length > 0) {
+          flushPage();
+        }
+
+        // Empty draft fallback so Page 1 still looks like a crisp real book
+        if (pages.length === 0) {
+          pages.push({
+            bodyHtml: renderChapterHeadHtml({ label: '', title: smartTypographize(draftTitle), titleOnly: true }) +
+              '<p class="book-p flush" style="text-align:center;font-style:italic;color:rgba(50,46,40,0.45);margin-top:16px;">Begin writing on the typewriter to fill these pages.</p>',
+            pageNum: 1,
+            chapterName: draftTitle,
+            isChapterStart: true,
+            isEndpaper: false
+          });
+        }
+
+        return pages;
+      }
+
+      function buildPageInnerHtml(pageObj, side, draftTitle) {
+        if (!pageObj || pageObj.isEndpaper) {
+          const isBack = pageObj && pageObj.endType === 'back';
+          return `<div class="book-page-inner ${side}">
+            <div class="endpaper-mark">${isBack ? 'Finis' : ''}</div>
+          </div>`;
+        }
+
+        const headerText = pageObj.isChapterStart
+          ? ''
+          : (side === 'verso' ? draftTitle : (pageObj.chapterName || draftTitle));
+
+        return `<div class="book-page-inner ${side}">
+          <div class="running-header">${escapeHtml(headerText)}</div>
+          <div class="page-body">${pageObj.bodyHtml}</div>
+          <div class="page-folio">${pageObj.pageNum}</div>
+        </div>`;
+      }
+
+      // Spread layout:
+      // spreadIndex 0 => Left: Front Endpaper, Right: Page 1 (bookPages[0])
+      // spreadIndex 1 => Left: Page 2 (bookPages[1]), Right: Page 3 (bookPages[2])
+      // spreadIndex k => Left: bookPages[2k - 1], Right: bookPages[2k]
+      function getSpreadPages(idx) {
+        const leftPage = idx === 0
+          ? { isEndpaper: true, endType: 'front' }
+          : (bookPages[idx * 2 - 1] || { isEndpaper: true, endType: 'back' });
+        const rightPage = bookPages[idx * 2] || { isEndpaper: true, endType: 'back' };
+        return { leftPage, rightPage };
+      }
+
+      function maxSpreadIndex() {
+        // Total spreads needed so the final page is always reachable
+        // If 1 page: spread 0 has [endpaper, p1] -> max = 0
+        // If 2 pages: spread 0 [endpaper, p1], spread 1 [p2, endpaper] -> max = 1
+        // If 3 pages: spread 0 [endpaper, p1], spread 1 [p2, p3] -> max = 1
+        return Math.floor(bookPages.length / 2);
+      }
+
+      function updatePageStacks() {
+        const total = Math.max(1, bookPages.length);
+        const maxThick = Math.min(18, Math.max(5, Math.round(total * 0.9)));
+        const maxIdx = Math.max(1, maxSpreadIndex());
+        const progress = spreadIndex / maxIdx;
+
+        const leftPx = spreadIndex === 0 ? 0 : Math.max(2, Math.round(maxThick * progress));
+        const rightPx = spreadIndex >= maxSpreadIndex() ? 0 : Math.max(2, Math.round(maxThick * (1 - progress)));
+
+        document.documentElement.style.setProperty('--left-stack', `${leftPx}px`);
+        document.documentElement.style.setProperty('--right-stack', `${rightPx}px`);
+      }
+
+      function renderCurrentSpread() {
+        const draftTitle = docTitleInput.value.trim() || 'Untitled Page';
+        const { leftPage, rightPage } = getSpreadPages(spreadIndex);
+
+        spreadLeft.classList.toggle('page-is-endpaper', !!leftPage.isEndpaper);
+        spreadRight.classList.toggle('page-is-endpaper', !!rightPage.isEndpaper);
+
+        spreadLeft.innerHTML = buildPageInnerHtml(leftPage, 'verso', draftTitle);
+        spreadRight.innerHTML = buildPageInnerHtml(rightPage, 'recto', draftTitle);
+
+        updatePageStacks();
+        updateBookChrome();
+      }
+
+      function updateBookChrome() {
+        const total = bookPages.length;
+        if (!bookOpen) {
+          bookStatusLabel.textContent = `${docTitleInput.value.trim() || 'Untitled Page'} · ${total} ${total === 1 ? 'page' : 'pages'}`;
+          labelToggleCover.textContent = 'Open Book';
+          bookBottomHint.textContent = 'Click cover to open';
+          btnPrevPage.disabled = true;
+          btnNextPage.disabled = false;
+          return;
+        }
+
+        labelToggleCover.textContent = 'Close Cover';
+        const { leftPage, rightPage } = getSpreadPages(spreadIndex);
+        const nums = [];
+        if (!leftPage.isEndpaper) nums.push(leftPage.pageNum);
+        if (!rightPage.isEndpaper) nums.push(rightPage.pageNum);
+
+        const labelRange = nums.length === 2
+          ? `Pages ${nums[0]}\u2013${nums[1]} of ${total}`
+          : nums.length === 1
+            ? `Page ${nums[0]} of ${total}`
+            : 'Endpaper';
+
+        bookStatusLabel.textContent = labelRange;
+        bookBottomHint.textContent = 'Click pages or use ← → keys';
+        btnPrevPage.disabled = false; // Can always go back to close cover from spread 0
+        btnNextPage.disabled = spreadIndex >= maxSpreadIndex();
+      }
+
+      function openHardcover() {
+        if (bookOpen || isTurning) return;
+        bookOpen = true;
+        bookAssembly.classList.remove('closed');
+        bookAssembly.classList.add('open');
+        AudioEngine.playBookCover(true);
+        updateBookChrome();
+      }
+
+      function closeHardcover() {
+        if (!bookOpen || isTurning) return;
+        bookOpen = false;
+        spreadIndex = 0;
+        renderCurrentSpread();
+        bookAssembly.classList.remove('open');
+        bookAssembly.classList.add('closed');
+        AudioEngine.playBookCover(false);
+        updateBookChrome();
+      }
+
+      function flipForward() {
+        if (isTurning) return;
+        if (!bookOpen) {
+          openHardcover();
+          return;
+        }
+        if (spreadIndex >= maxSpreadIndex()) return;
+
+        isTurning = true;
+        const draftTitle = docTitleInput.value.trim() || 'Untitled Page';
+        const current = getSpreadPages(spreadIndex);
+        const next = getSpreadPages(spreadIndex + 1);
+
+        // Turning leaf carries current right page (front) and next left page (back)
+        flipFrontContent.parentElement.classList.toggle('page-is-endpaper', !!current.rightPage.isEndpaper);
+        flipBackContent.parentElement.classList.toggle('page-is-endpaper', !!next.leftPage.isEndpaper);
+        flipFrontContent.innerHTML = buildPageInnerHtml(current.rightPage, 'recto', draftTitle);
+        flipBackContent.innerHTML = buildPageInnerHtml(next.leftPage, 'verso', draftTitle);
+
+        // Reveal the upcoming right page underneath immediately
+        spreadRight.classList.toggle('page-is-endpaper', !!next.rightPage.isEndpaper);
+        spreadRight.innerHTML = buildPageInnerHtml(next.rightPage, 'recto', draftTitle);
+
+        // Position leaf flat on right side, then sweep to -180deg
+        turningLeaf.style.transition = 'none';
+        turningLeaf.style.transform = 'translateZ(6px) rotateY(0deg)';
+        turningLeaf.classList.add('active');
+        turningLeaf.classList.remove('turning');
+
+        AudioEngine.playPageTurn();
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            turningLeaf.style.transition = 'transform 0.66s cubic-bezier(0.45, 0.05, 0.35, 1)';
+            turningLeaf.classList.add('turning');
+            turningLeaf.style.transform = 'translateZ(6px) rotateY(-180deg)';
+          });
+        });
+
+        setTimeout(() => {
+          spreadIndex++;
+          turningLeaf.classList.remove('active', 'turning');
+          renderCurrentSpread();
+          isTurning = false;
+        }, 680);
+      }
+
+      function flipBackward() {
+        if (isTurning || !bookOpen) return;
+        if (spreadIndex === 0) {
+          closeHardcover();
+          return;
+        }
+
+        isTurning = true;
+        const draftTitle = docTitleInput.value.trim() || 'Untitled Page';
+        const current = getSpreadPages(spreadIndex);
+        const prev = getSpreadPages(spreadIndex - 1);
+
+        // Turning leaf carries prev right page (front) and current left page (back)
+        flipFrontContent.parentElement.classList.toggle('page-is-endpaper', !!prev.rightPage.isEndpaper);
+        flipBackContent.parentElement.classList.toggle('page-is-endpaper', !!current.leftPage.isEndpaper);
+        flipFrontContent.innerHTML = buildPageInnerHtml(prev.rightPage, 'recto', draftTitle);
+        flipBackContent.innerHTML = buildPageInnerHtml(current.leftPage, 'verso', draftTitle);
+
+        // Reveal previous left page underneath immediately
+        spreadLeft.classList.toggle('page-is-endpaper', !!prev.leftPage.isEndpaper);
+        spreadLeft.innerHTML = buildPageInnerHtml(prev.leftPage, 'verso', draftTitle);
+
+        // Position leaf flipped on left (-180deg), then sweep back to 0deg
+        turningLeaf.style.transition = 'none';
+        turningLeaf.style.transform = 'translateZ(6px) rotateY(-180deg)';
+        turningLeaf.classList.add('active');
+        turningLeaf.classList.remove('turning');
+
+        AudioEngine.playPageTurn();
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            turningLeaf.style.transition = 'transform 0.66s cubic-bezier(0.45, 0.05, 0.35, 1)';
+            turningLeaf.classList.add('turning');
+            turningLeaf.style.transform = 'translateZ(6px) rotateY(0deg)';
+          });
+        });
+
+        setTimeout(() => {
+          spreadIndex--;
+          turningLeaf.classList.remove('active', 'turning');
+          renderCurrentSpread();
+          isTurning = false;
+        }, 680);
+      }
+
+      function enterBookMode() {
+        if (isBookMode) return;
+        closeDrawers();
+        bookPopover.classList.remove('open');
+        isBookMode = true;
+        bookOpen = false;
+        spreadIndex = 0;
+
+        bookPages = buildPaginatedBook();
+        bookAssembly.classList.remove('open');
+        bookAssembly.classList.add('closed');
+        renderCurrentSpread();
+
+        document.body.classList.add('book-mode');
+        editor.blur();
+      }
+
+      function exitBookMode() {
+        if (!isBookMode) return;
+        bookPopover.classList.remove('open');
+        isBookMode = false;
+        document.body.classList.remove('book-mode');
+        requestAnimationFrame(() => {
+          updateMechanics();
+          editor.focus();
+        });
+      }
+
+      function repaginateBookPreservingPosition() {
+        if (!isBookMode) return;
+        const oldMax = Math.max(1, maxSpreadIndex());
+        const ratio = spreadIndex / oldMax;
+        bookPages = buildPaginatedBook();
+        const newMax = maxSpreadIndex();
+        spreadIndex = Math.min(newMax, Math.round(ratio * newMax));
+        renderCurrentSpread();
       }
 
       // ==================== DRAFTS MANAGEMENT ====================
@@ -1712,11 +3348,10 @@
         updateWordCount();
         renderDraftsList();
 
-        // Place cursor at end
         editor.selectionStart = editor.selectionEnd = editor.value.length;
         requestAnimationFrame(() => {
           updateMechanics();
-          editor.focus();
+          if (!isBookMode) editor.focus();
         });
       }
 
@@ -1741,7 +3376,7 @@
       function formatDate(ts) {
         const d = new Date(ts);
         return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-          ' · ' +
+          ' \u00B7 ' +
           d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
       }
 
@@ -1877,7 +3512,6 @@
       editor.addEventListener('keydown', (e) => {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-        // Strict Typewriter Mode: block Backspace/Delete
         if (settings.strictMode && (e.key === 'Backspace' || e.key === 'Delete')) {
           e.preventDefault();
           AudioEngine.playBackspace();
@@ -1909,13 +3543,113 @@
         editor.addEventListener(ev, () => requestAnimationFrame(updateMechanics));
       });
 
-      window.addEventListener('resize', () => requestAnimationFrame(updateMechanics));
+      window.addEventListener('resize', () => {
+        if (isBookMode) {
+          clearTimeout(resizeBookTimer);
+          resizeBookTimer = setTimeout(repaginateBookPreservingPosition, 160);
+        } else {
+          requestAnimationFrame(updateMechanics);
+        }
+      });
 
       docTitleInput.addEventListener('input', scheduleSave);
 
-      // Global Mac shortcuts
+      // Book Mode Interactions
+      btnBook.addEventListener('click', enterBookMode);
+      btnBackTypewriter.addEventListener('click', exitBookMode);
+      btnToggleCover.addEventListener('click', () => {
+        if (bookOpen) closeHardcover();
+        else openHardcover();
+      });
+
+      frontCoverLeaf.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!bookOpen) openHardcover();
+      });
+
+      spreadRight.addEventListener('click', () => {
+        bookPopover.classList.remove('open');
+        flipForward();
+      });
+
+      spreadLeft.addEventListener('click', () => {
+        bookPopover.classList.remove('open');
+        flipBackward();
+      });
+
+      btnNextPage.addEventListener('click', () => {
+        bookPopover.classList.remove('open');
+        flipForward();
+      });
+
+      btnPrevPage.addEventListener('click', () => {
+        bookPopover.classList.remove('open');
+        flipBackward();
+      });
+
+      btnBookTypo.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bookPopover.classList.toggle('open');
+      });
+
+      bookStage.addEventListener('click', (e) => {
+        if (!e.target.closest('#book-popover') && !e.target.closest('#btn-book-typo')) {
+          bookPopover.classList.remove('open');
+        }
+      });
+
+      document.querySelectorAll('#book-font-selector .seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          settings.bookFont = btn.dataset.bfont;
+          saveSettings();
+          applySettingsToUI();
+          repaginateBookPreservingPosition();
+        });
+      });
+
+      document.querySelectorAll('#book-size-selector .seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          settings.bookFontSize = Number(btn.dataset.bsize);
+          saveSettings();
+          applySettingsToUI();
+          repaginateBookPreservingPosition();
+        });
+      });
+
+      toggleDropcaps.addEventListener('change', () => {
+        settings.bookDropCaps = toggleDropcaps.checked;
+        saveSettings();
+        repaginateBookPreservingPosition();
+      });
+
+      // Global Mac Shortcuts
       window.addEventListener('keydown', (e) => {
         const mod = e.metaKey || e.ctrlKey;
+
+        if (mod && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          if (isBookMode) exitBookMode();
+          else enterBookMode();
+          return;
+        }
+
+        if (isBookMode) {
+          if (e.key === 'Escape') {
+            if (bookPopover.classList.contains('open')) {
+              bookPopover.classList.remove('open');
+            } else {
+              exitBookMode();
+            }
+          } else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            flipForward();
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            flipBackward();
+          }
+          return;
+        }
+
         if (mod && e.key.toLowerCase() === 'k') {
           e.preventDefault();
           if (drawerDrafts.classList.contains('open')) closeDrawers();
@@ -1937,7 +3671,7 @@
         }
       });
 
-      // Buttons
+      // Typewriter HUD Buttons
       btnDrafts.addEventListener('click', () => {
         renderDraftsList();
         openDrawer(drawerDrafts);
@@ -1964,7 +3698,6 @@
 
       draftSearch.addEventListener('input', renderDraftsList);
 
-      // Settings controls
       document.querySelectorAll('#mood-selector .seg-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           settings.mood = btn.dataset.mood;
@@ -2102,7 +3835,6 @@
         const initial = drafts.find((d) => d.id === settings.activeDraftId) || drafts[0];
         openDraft(initial.id);
 
-        // Register offline Service Worker
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('./sw.js').catch(() => {});
         }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'studio-typewriter-v1';
+const CACHE_NAME = 'studio-typewriter-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -43,7 +43,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => cached || caches.match('./index.html'));
 
       return cached || fetchPromise;
     })
