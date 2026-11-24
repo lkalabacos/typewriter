@@ -1,4 +1,4 @@
-const CACHE_NAME = 'studio-typewriter-v2';
+const CACHE_NAME = 'studio-typewriter-v3';
 const ASSETS = [
   './',
   './index.html',

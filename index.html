@@ -107,7 +107,14 @@
     body.book-mode .hud,
     body.book-mode .platen-footer {
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
+    }
+
+    body.book-mode .stage *,
+    body.book-mode .hud *,
+    body.book-mode .platen-footer * {
+      pointer-events: none !important;
     }
 
     /* Upper Paper Surface */
@@ -568,8 +575,9 @@
       align-items: center;
       justify-content: center;
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
-      transition: opacity 0.42s ease;
+      transition: opacity 0.42s ease, visibility 0s linear 0.42s;
       background:
         radial-gradient(ellipse 68% 58% at 50% 42%, rgba(255, 224, 184, 0.22) 0%, rgba(232, 164, 104, 0.07) 42%, transparent 74%),
         linear-gradient(180deg, #626673 0%, #4b4e5a 58%, #343742 100%);
@@ -587,9 +595,16 @@
         linear-gradient(180deg, #cfd3dc 0%, #bcc1cc 60%, #a5aab7 100%);
     }
 
+    body:not(.book-mode) .book-stage,
+    body:not(.book-mode) .book-stage * {
+      pointer-events: none !important;
+    }
+
     body.book-mode .book-stage {
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
+      transition: opacity 0.42s ease, visibility 0s linear 0s;
     }
 
     .book-topbar {
@@ -601,6 +616,7 @@
       align-items: center;
       justify-content: space-between;
       z-index: 60;
+      pointer-events: none;
     }
 
     .book-nav-center {
