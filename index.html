@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Studio Typewriter</title>
+  <meta name="description" content="Minimalist offline studio-lit digital typewriter." />
+  <meta name="theme-color" content="#7d818e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Studio Typewriter" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+
+  <style>
+    :root {
+      --platen-y: 75vh;
+      --paper-top: #797d8a;
+      --paper-bottom: #8d909b;
+      --platen-top: #4a4d57;
+      --platen-bottom: #2b2d34;
+      --ink-color: #1f1e22;
+      --ink-muted: rgba(31, 30, 34, 0.55);
+      --hud-ink: rgba(248, 246, 242, 0.85);
+      --hud-bg: rgba(28, 30, 36, 0.28);
+      --hud-border: rgba(255, 255, 255, 0.14);
+      --panel-bg: rgba(30, 32, 39, 0.92);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --panel-text: #f3efe9;
+      --panel-muted: #a4a7b3;
+      --accent: #e8a768;
+
+      /* Dynamic cursor + spotlight variables */
+      --cx: 50vw;
+      --spot-core: rgba(255, 240, 218, 0.96);
+      --spot-mid: rgba(250, 206, 152, 0.68);
+      --spot-outer: rgba(232, 156, 98, 0.28);
+      --spot-mist: rgba(198, 126, 86, 0.09);
+      --spill-core: rgba(248, 188, 126, 0.42);
+      --spill-outer: rgba(226, 146, 86, 0.14);
+
+      /* Typography */
+      --font-family: 'Courier Prime', 'American Typewriter', 'Courier New', 'SF Mono', ui-monospace, monospace;
+      --font-size: 18px;
+      --line-height: 1.72;
+      --col-width: 64ch;
+    }
+
+    body[data-mood="midnight"] {
+      --paper-top: #262933;
+      --paper-bottom: #323542;
+      --platen-top: #1d1f27;
+      --platen-bottom: #111218;
+      --ink-color: #1b191d;
+      --hud-ink: rgba(245, 238, 228, 0.82);
+    }
+
+    body[data-mood="daylight"] {
+      --paper-top: #c8ccd4;
+      --paper-bottom: #d6d9df;
+      --platen-top: #8f939e;
+      --platen-bottom: #6f737f;
+      --ink-color: #1e1e22;
+      --hud-ink: rgba(30, 32, 38, 0.84);
+      --hud-bg: rgba(255, 255, 255, 0.45);
+      --hud-border: rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--platen-bottom);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+      user-select: none;
+    }
+
+    /* ==================== STAGE ==================== */
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      cursor: text;
+    }
+
+    /* Upper Paper Surface */
+    .paper-zone {
+      position: absolute;
+      inset: 0 0 calc(100vh - var(--platen-y)) 0;
+      background: linear-gradient(180deg, var(--paper-top) 0%, var(--paper-bottom) 100%);
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    /* Subtle organic matte paper grain */
+    .paper-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.045;
+      background-image: radial-gradient(rgba(255,255,255,0.6) 0.5px, transparent 0.5px),
+                        radial-gradient(rgba(0,0,0,0.45) 0.5px, transparent 0.5px);
+      background-size: 16px 16px, 21px 21px;
+      background-position: 0 0, 7px 9px;
+      z-index: 2;
+    }
+
+    /* Moving Warm Upward Studio-Lamp Spotlight */
+    .spotlight-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      background:
+        radial-gradient(
+          ellipse 280px 160px at var(--cx) calc(var(--platen-y) - 18px),
+          var(--spot-core) 0%,
+          var(--spot-mid) 38%,
+          transparent 76%
+        ),
+        radial-gradient(
+          ellipse 560px 410px at var(--cx) calc(var(--platen-y) - 55px),
+          var(--spot-mid) 0%,
+          var(--spot-outer) 42%,
+          var(--spot-mist) 68%,
+          transparent 86%
+        );
+      will-change: background;
+    }
+
+    /* Subtle top edge vignette for depth */
+    .paper-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      background: linear-gradient(
+        180deg,
+        rgba(20, 22, 28, 0.24) 0%,
+        rgba(20, 22, 28, 0.04) 24%,
+        transparent 55%,
+        rgba(20, 22, 28, 0.08) 100%
+      );
+    }
+
+    body[data-mood="midnight"] .paper-vignette {
+      background: linear-gradient(
+        180deg,
+        rgba(8, 9, 14, 0.58) 0%,
+        rgba(8, 9, 14, 0.22) 30%,
+        transparent 62%
+      );
+    }
+
+    body[data-mood="daylight"] .paper-vignette {
+      background: linear-gradient(
+        180deg,
+        rgba(60, 64, 76, 0.1) 0%,
+        transparent 40%
+      );
+    }
+
+    /* Paper Column Viewport */
+    .editor-clip {
+      position: absolute;
+      inset: 0 0 calc(100vh - var(--platen-y)) 0;
+      overflow: hidden;
+      z-index: 6;
+      pointer-events: auto;
+    }
+
+    .paper-sheet {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: min(var(--col-width), calc(100vw - 80px));
+      transform: translate3d(-50%, 0px, 0);
+      transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: transform;
+    }
+
+    #editor {
+      display: block;
+      width: 100%;
+      min-height: 200px;
+      margin: 0;
+      padding: 0 4px 12px 4px;
+      border: none;
+      outline: none;
+      resize: none;
+      overflow: hidden;
+      background: transparent;
+      color: var(--ink-color);
+      font-family: var(--font-family);
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      letter-spacing: 0.012em;
+      caret-color: transparent;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    body[data-mood="midnight"] #editor {
+      color: #19181c;
+      text-shadow: 0 0 1px rgba(255, 228, 196, 0.16);
+    }
+
+    #editor::placeholder {
+      color: rgba(35, 34, 40, 0.38);
+      font-style: italic;
+    }
+
+    /* Active custom subtle vertical ink cursor right above T-guide */
+    .ink-caret {
+      position: fixed;
+      width: 1.5px;
+      height: calc(var(--font-size) * 1.15);
+      background: rgba(25, 24, 28, 0.85);
+      pointer-events: none;
+      z-index: 9;
+      transform: translate3d(-50%, -100%, 0);
+      border-radius: 1px;
+      animation: caretBlink 1.05s steps(2, start) infinite;
+      transition: left 0.055s ease-out, top 0.08s ease-out, opacity 0.15s;
+    }
+
+    .ink-caret.typing {
+      animation: none;
+      opacity: 0.92;
+    }
+
+    @keyframes caretBlink {
+      0%, 55% { opacity: 0.88; }
+      56%, 100% { opacity: 0.12; }
+    }
+
+    /* Hidden mirror for exact caret X/Y measurement */
+    #caret-mirror {
+      position: fixed;
+      top: -9999px;
+      left: -9999px;
+      visibility: hidden;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      padding: 0 4px 12px 4px;
+      font-family: var(--font-family);
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      letter-spacing: 0.012em;
+    }
+
+    /* ==================== LOWER PLATEN ==================== */
+    .platen-zone {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: var(--platen-y);
+      bottom: 0;
+      background: linear-gradient(180deg, var(--platen-top) 0%, var(--platen-bottom) 100%);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* Crisp platen track seam */
+    .platen-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: linear-gradient(
+        180deg,
+        rgba(18, 20, 26, 0.82) 0%,
+        rgba(255, 228, 198, 0.18) 100%
+      );
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+      z-index: 11;
+    }
+
+    /* Warm downward light spill reflection onto lower shaded platen */
+    .platen-spill {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        ellipse 210px 78px at var(--cx) 6px,
+        var(--spill-core) 0%,
+        var(--spill-outer) 48%,
+        transparent 80%
+      );
+      z-index: 11;
+    }
+
+    /* ==================== CARRIAGE ASSEMBLY ==================== */
+    .carriage-assembly {
+      position: fixed;
+      top: var(--platen-y);
+      left: var(--cx);
+      transform: translate3d(-50%, 0, 0);
+      z-index: 15;
+      pointer-events: none;
+      transition: left 0.075s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: left;
+    }
+
+    /* Mechanical dark-steel T-guide directly beneath active character */
+    .t-guide {
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      transform: translateX(-50%);
+      width: 14px;
+      height: 15px;
+      filter: drop-shadow(0 1px 1px rgba(255, 240, 220, 0.25));
+    }
+
+    .t-guide::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2.5px;
+      border-radius: 1.5px;
+      background: linear-gradient(180deg, #3b3e46 0%, #1d1f24 100%);
+      box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.18) inset;
+    }
+
+    .t-guide::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 13px;
+      background: linear-gradient(90deg, #1b1d22 0%, #444852 50%, #181a1f 100%);
+      border-radius: 0 0 1px 1px;
+    }
+
+    /* Brushed-silver 3D carriage pill (52x14px) */
+    .carriage-pill {
+      position: relative;
+      width: 52px;
+      height: 14px;
+      margin-top: -7px;
+      border-radius: 999px;
+      background:
+        linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.12) 0%,
+          rgba(255, 255, 255, 0.42) 22%,
+          rgba(255, 255, 255, 0.16) 50%,
+          rgba(255, 255, 255, 0.38) 78%,
+          rgba(255, 255, 255, 0.1) 100%
+        ),
+        linear-gradient(
+          180deg,
+          #f5f4f2 0%,
+          #d7d8dc 26%,
+          #a9acb4 64%,
+          #7b7e88 92%,
+          #5c5f68 100%
+        );
+      box-shadow:
+        0 1px 0.5px rgba(255, 255, 255, 0.85) inset,
+        0 -1px 1.5px rgba(35, 38, 46, 0.55) inset,
+        0 4px 10px rgba(0, 0, 0, 0.48),
+        0 1px 3px rgba(0, 0, 0, 0.4),
+        0 0 14px rgba(250, 200, 140, 0.25);
+    }
+
+    .carriage-pill::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 7px;
+      right: 7px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+    }
+
+    /* ==================== MINIMAL HUD ==================== */
+    .hud {
+      position: fixed;
+      top: 18px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 30;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+
+    body.typing-idle .hud {
+      opacity: 0.14;
+    }
+
+    .hud:hover,
+    body.drawer-open .hud {
+      opacity: 1 !important;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .doc-title-input {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--hud-ink);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 10px;
+      width: 220px;
+      outline: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .doc-title-input:hover,
+    .doc-title-input:focus {
+      background: var(--hud-bg);
+      border-color: var(--hud-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--hud-ink);
+      opacity: 0.78;
+      padding: 5px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.01em;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #96d6a3;
+      transition: background 0.3s;
+    }
+
+    .status-dot.saving {
+      background: var(--accent);
+    }
+
+    .hud-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--hud-ink);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 6px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.18s, border-color 0.18s, transform 0.1s;
+    }
+
+    .hud-btn:hover {
+      background: var(--hud-bg);
+      border-color: var(--hud-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .hud-btn:active {
+      transform: scale(0.97);
+    }
+
+    .hud-btn.active {
+      background: var(--hud-bg);
+      border-color: rgba(232, 167, 104, 0.45);
+      color: #ffd9b0;
+    }
+
+    .hud-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .strict-badge {
+      display: none;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(232, 167, 104, 0.22);
+      border: 1px solid rgba(232, 167, 104, 0.4);
+      color: #ffe0be;
+    }
+
+    body.strict-mode .strict-badge {
+      display: inline-flex;
+    }
+
+    /* Bottom subtle word counter on platen */
+    .platen-footer {
+      position: fixed;
+      bottom: 18px;
+      left: 26px;
+      right: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+      pointer-events: none;
+      color: rgba(242, 236, 228, 0.44);
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      transition: opacity 0.45s ease;
+    }
+
+    body.typing-idle .platen-footer {
+      opacity: 0.28;
+    }
+
+    /* ==================== DRAWERS ==================== */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 11, 16, 0.35);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 40;
+    }
+
+    .backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 14px;
+      bottom: 14px;
+      width: 340px;
+      max-width: calc(100vw - 28px);
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      color: var(--panel-text);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .drawer.left {
+      left: 14px;
+      transform: translateX(-24px);
+    }
+
+    .drawer.right {
+      right: 14px;
+      transform: translateX(24px);
+    }
+
+    .drawer.open {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-header {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      margin: 0;
+    }
+
+    .icon-close {
+      background: transparent;
+      border: none;
+      color: var(--panel-muted);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    .icon-close:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px 20px;
+    }
+
+    .drawer-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      appearance: none;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.16s, border-color 0.16s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #1c1610;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #f0b57c;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--panel-text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    /* Drafts List */
+    .search-box {
+      width: 100%;
+      padding: 8px 11px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.24);
+      color: var(--panel-text);
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    .search-box:focus {
+      border-color: rgba(232, 167, 104, 0.55);
+    }
+
+    .draft-item {
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: background 0.15s, border-color 0.15s;
+      position: relative;
+    }
+
+    .draft-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .draft-item.active {
+      background: rgba(232, 167, 104, 0.13);
+      border-color: rgba(232, 167, 104, 0.35);
+    }
+
+    .draft-item-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      padding-right: 26px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .draft-item-preview {
+      font-size: 12px;
+      color: var(--panel-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+
+    .draft-item-meta {
+      font-size: 11px;
+      color: rgba(164, 167, 179, 0.72);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .draft-delete {
+      position: absolute;
+      top: 9px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--panel-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .draft-item:hover .draft-delete {
+      opacity: 1;
+    }
+
+    .draft-delete:hover {
+      background: rgba(235, 92, 92, 0.2);
+      color: #ff9c9c;
+    }
+
+    /* Settings Controls */
+    .setting-section {
+      margin-bottom: 20px;
+    }
+
+    .setting-section h4 {
+      margin: 0 0 10px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--panel-muted);
+    }
+
+    .setting-row {
+      margin-bottom: 13px;
+    }
+
+    .setting-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .setting-value {
+      font-size: 12px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .warmth-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--panel-muted);
+      margin-top: 2px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .seg-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--panel-muted);
+      padding: 8px 6px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .seg-btn.active {
+      background: rgba(232, 167, 104, 0.18);
+      border-color: rgba(232, 167, 104, 0.55);
+      color: #ffe3c4;
+      font-weight: 500;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+    }
+
+    .toggle-sub {
+      font-size: 11.5px;
+      color: var(--panel-muted);
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(18px);
+    }
+
+    .export-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translate(-50%, 16px);
+      background: rgba(24, 26, 32, 0.92);
+      color: #f8f3ec;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 80;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* ==================== PRINT / PDF MANUSCRIPT ==================== */
+    #print-view {
+      display: none;
+    }
+
+    @media print {
+      @page {
+        size: letter;
+        margin: 1in;
+      }
+      html, body {
+        background: #ffffff !important;
+        overflow: visible !important;
+        height: auto !important;
+      }
+      .stage, .hud, .platen-footer, .backdrop, .drawer, .toast, .ink-caret, #caret-mirror {
+        display: none !important;
+      }
+      #print-view {
+        display: block !important;
+        color: #111111;
+        font-family: var(--font-family);
+        font-size: 12pt;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      #print-title {
+        font-weight: 700;
+        font-size: 13pt;
+        margin-bottom: 24pt;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+    }
+  </style>
+</head>
+<body data-mood="studio">
+  <!-- Minimal Top HUD -->
+  <header class="hud" aria-label="Controls">
+    <div class="hud-group">
+      <button class="hud-btn" id="btn-drafts" title="Drafts Library (⌘K)">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Drafts</span>
+      </button>
+      <input
+        type="text"
+        id="doc-title"
+        class="doc-title-input"
+        value="Untitled Page"
+        aria-label="Draft title"
+        spellcheck="false"
+      />
+      <span class="strict-badge">Strict Mode</span>
+    </div>
+
+    <div class="hud-group">
+      <span class="status-pill" id="save-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Saved locally</span>
+      </span>
+      <button class="hud-btn" id="btn-sound" title="Toggle Mechanical Sound">
+        <svg id="icon-sound-on" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+        <svg id="icon-sound-off" viewBox="0 0 24 24" style="display:none"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      </button>
+      <button class="hud-btn" id="btn-settings" title="Settings & Export (⌘,)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Studio</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Typewriter Stage -->
+  <main class="stage" id="stage">
+    <section class="paper-zone">
+      <div class="paper-grain"></div>
+      <div class="spotlight-layer"></div>
+      <div class="paper-vignette"></div>
+    </section>
+
+    <div class="editor-clip">
+      <div class="paper-sheet" id="paper-sheet">
+        <textarea
+          id="editor"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="sentences"
+          placeholder="Start typing..."
+          aria-label="Typewriter page"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="ink-caret" id="ink-caret"></div>
+
+    <section class="platen-zone">
+      <div class="platen-track"></div>
+      <div class="platen-spill"></div>
+    </section>
+
+    <div class="carriage-assembly" id="carriage">
+      <div class="t-guide"></div>
+      <div class="carriage-pill"></div>
+    </div>
+  </main>
+
+  <!-- Subtle Lower Platen Footer -->
+  <footer class="platen-footer">
+    <span id="word-count">0 words</span>
+    <span id="shortcut-hint">⌘K Drafts · ⌘, Studio · ⌘P Print PDF</span>
+  </footer>
+
+  <!-- Hidden Caret Mirror -->
+  <div id="caret-mirror" aria-hidden="true"></div>
+
+  <!-- Drawer Backdrop -->
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- Left Drawer: Drafts Library -->
+  <aside class="drawer left" id="drawer-drafts" aria-label="Drafts Library">
+    <div class="drawer-header">
+      <h3 class="drawer-title">Drafts</h3>
+      <button class="icon-close" data-close>&times;</button>
+    </div>
+    <div class="drawer-body">
+      <input type="search" id="draft-search" class="search-box" placeholder="Filter drafts..." />
+      <div id="drafts-list"></div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn-primary" id="btn-new-draft" style="flex:1;">+ New Page</button>
+      <button class="btn-secondary" id="btn-import-json" title="Restore backup">Import JSON</button>
+      <input type="file" id="file-import" accept=".json,.txt,.md" style="display:none" />
+    </div>
+  </aside>
+
+  <!-- Right Drawer: Studio Settings & Export -->
+  <aside class="drawer right" id="drawer-settings" aria-label="Studio Settings">
+    <div class="drawer-header">
+      <h3 class="drawer-title">Studio &amp; Export</h3>
+      <button class="icon-close" data-close>&times;</button>
+    </div>
+    <div class="drawer-body">
+      <div class="setting-section">
+        <h4>Lighting</h4>
+        <div class="setting-row">
+          <div class="segmented" id="mood-selector">
+            <button class="seg-btn active" data-mood="studio">Studio Lamp</button>
+            <button class="seg-btn" data-mood="midnight">Midnight</button>
+            <button class="seg-btn" data-mood="daylight">Daylight</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <span>Spotlight Warmth</span>
+            <span class="setting-value" id="warmth-readout">2500K</span>
+          </div>
+          <input type="range" id="range-warmth" min="0" max="100" value="62" />
+          <div class="warmth-scale">
+            <span>4200K Ivory</span>
+            <span>2500K Tungsten</span>
+            <span>1950K Amber</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <h4>Typography</h4>
+        <div class="setting-row">
+          <div class="segmented" id="font-selector">
+            <button class="seg-btn active" data-font="typewriter">Typewriter</button>
+            <button class="seg-btn" data-font="mono">Clean Mono</button>
+            <button class="seg-btn" data-font="serif">Editorial</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <span>Font Size</span>
+            <span class="setting-value" id="size-readout">18px</span>
+          </div>
+          <input type="range" id="range-size" min="14" max="24" value="18" />
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <span>Line Width</span>
+            <span class="setting-value" id="width-readout">64ch</span>
+          </div>
+          <input type="range" id="range-width" min="48" max="80" value="64" />
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <h4>Mechanics &amp; Sound</h4>
+        <div class="setting-row">
+          <div class="setting-label">
+            <span>Keystroke Volume</span>
+            <span class="setting-value" id="vol-readout">75%</span>
+          </div>
+          <input type="range" id="range-volume" min="0" max="100" value="75" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div>Margin Bell</div>
+            <div class="toggle-sub">Brass ding near end of line</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-bell" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div>Strict Typewriter Mode</div>
+            <div class="toggle-sub">Disables Backspace so you keep moving forward</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-strict" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <h4>Export &amp; Backup</h4>
+        <div class="export-grid">
+          <button class="btn-secondary" id="exp-txt">Export .TXT</button>
+          <button class="btn-secondary" id="exp-md">Export .MD</button>
+          <button class="btn-secondary" id="exp-pdf">Print / PDF</button>
+          <button class="btn-secondary" id="exp-copy">Copy All</button>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="btn-secondary" id="exp-backup" style="width:100%;">Backup All Drafts (.JSON)</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Print View -->
+  <div id="print-view">
+    <div id="print-title"></div>
+    <div id="print-body"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      // ==================== ELEMENTS ====================
+      const editor = document.getElementById('editor');
+      const paperSheet = document.getElementById('paper-sheet');
+      const caretMirror = document.getElementById('caret-mirror');
+      const inkCaret = document.getElementById('ink-caret');
+      const stage = document.getElementById('stage');
+      const docTitleInput = document.getElementById('doc-title');
+      const wordCountEl = document.getElementById('word-count');
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const toastEl = document.getElementById('toast');
+
+      const backdrop = document.getElementById('backdrop');
+      const drawerDrafts = document.getElementById('drawer-drafts');
+      const drawerSettings = document.getElementById('drawer-settings');
+      const draftsListEl = document.getElementById('drafts-list');
+      const draftSearch = document.getElementById('draft-search');
+
+      const btnDrafts = document.getElementById('btn-drafts');
+      const btnSettings = document.getElementById('btn-settings');
+      const btnSound = document.getElementById('btn-sound');
+      const iconSoundOn = document.getElementById('icon-sound-on');
+      const iconSoundOff = document.getElementById('icon-sound-off');
+      const btnNewDraft = document.getElementById('btn-new-draft');
+      const btnImportJson = document.getElementById('btn-import-json');
+      const fileImport = document.getElementById('file-import');
+
+      const rangeWarmth = document.getElementById('range-warmth');
+      const warmthReadout = document.getElementById('warmth-readout');
+      const rangeSize = document.getElementById('range-size');
+      const sizeReadout = document.getElementById('size-readout');
+      const rangeWidth = document.getElementById('range-width');
+      const widthReadout = document.getElementById('width-readout');
+      const rangeVolume = document.getElementById('range-volume');
+      const volReadout = document.getElementById('vol-readout');
+      const toggleBell = document.getElementById('toggle-bell');
+      const toggleStrict = document.getElementById('toggle-strict');
+
+      const FONTS = {
+        typewriter: "'Courier Prime', 'American Typewriter', 'Courier New', 'SF Mono', ui-monospace, monospace",
+        mono: "'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco', ui-monospace, monospace",
+        serif: "'Iowan Old Style', 'Georgia', 'Baskerville', serif"
+      };
+
+      // ==================== STATE ====================
+      const SETTINGS_KEY = 'studio_typewriter_settings_v2';
+      const LOCAL_DRAFTS_KEY = 'studio_typewriter_drafts_fallback_v2';
+
+      let settings = {
+        mood: 'studio',
+        warmth: 62, // 0 (4200K ivory) -> 62 (2500K slightly warm tungsten) -> 100 (1950K deep amber)
+        font: 'typewriter',
+        fontSize: 18,
+        colWidth: 64,
+        soundEnabled: true,
+        volume: 0.75,
+        marginBell: true,
+        strictMode: false,
+        activeDraftId: null
+      };
+
+      let drafts = [];
+      let currentDraft = null;
+      let saveTimer = null;
+      let idleTimer = null;
+      let typingCaretTimer = null;
+      let toastTimer = null;
+      let bellRangOnLine = -1;
+
+      // ==================== INDEXEDDB STORAGE ====================
+      const DB_NAME = 'StudioTypewriterDB';
+      const STORE_NAME = 'drafts';
+      let db = null;
+
+      function openDB() {
+        return new Promise((resolve) => {
+          if (!('indexedDB' in window)) return resolve(null);
+          try {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = (e) => {
+              const d = e.target.result;
+              if (!d.objectStoreNames.contains(STORE_NAME)) {
+                d.createObjectStore(STORE_NAME, { keyPath: 'id' });
+              }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = () => resolve(null);
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+
+      async function loadAllDrafts() {
+        if (db) {
+          return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve(loadFallbackDrafts());
+          });
+        }
+        return loadFallbackDrafts();
+      }
+
+      function loadFallbackDrafts() {
+        try {
+          return JSON.parse(localStorage.getItem(LOCAL_DRAFTS_KEY) || '[]');
+        } catch {
+          return [];
+        }
+      }
+
+      function saveFallbackDrafts() {
+        try {
+          localStorage.setItem(LOCAL_DRAFTS_KEY, JSON.stringify(drafts));
+        } catch {}
+      }
+
+      async function persistDraft(draft) {
+        saveFallbackDrafts();
+        if (!db) return;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).put(draft);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          } catch {
+            resolve();
+          }
+        });
+      }
+
+      async function removeDraftFromDB(id) {
+        saveFallbackDrafts();
+        if (!db) return;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          } catch {
+            resolve();
+          }
+        });
+      }
+
+      function loadSettings() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+          settings = { ...settings, ...saved };
+        } catch {}
+      }
+
+      function saveSettings() {
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        } catch {}
+      }
+
+      // ==================== MECHANICAL AUDIO ENGINE (100% OFFLINE) ====================
+      const AudioEngine = (() => {
+        let ctx = null;
+        let noiseBuffer = null;
+
+        function ensureContext() {
+          if (!ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return null;
+            ctx = new AudioCtx();
+            // Create reusable short white-noise buffer for mechanical transients
+            const len = Math.floor(ctx.sampleRate * 0.25);
+            noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+              data[i] = Math.random() * 2 - 1;
+            }
+          }
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+          return ctx;
+        }
+
+        function masterVol() {
+          return settings.soundEnabled ? settings.volume : 0;
+        }
+
+        function playKey(charCode = 65) {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+
+          const now = ac.currentTime;
+          // Subtle deterministic + micro-random variation per key
+          const variance = ((charCode % 13) - 6) * 28 + (Math.random() - 0.5) * 90;
+
+          // 1. Crisp hammer strike transient (bandpass noise burst)
+          const noise = ac.createBufferSource();
+          noise.buffer = noiseBuffer;
+          const bp = ac.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(2400 + variance, now);
+          bp.Q.setValueAtTime(2.4, now);
+
+          const nGain = ac.createGain();
+          nGain.gain.setValueAtTime(0.32 * vol, now);
+          nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+
+          noise.connect(bp).connect(nGain).connect(ac.destination);
+          noise.start(now);
+          noise.stop(now + 0.036);
+
+          // 2. Platen roller body thump
+          const osc = ac.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(175 + (charCode % 7) * 8, now);
+          osc.frequency.exponentialRampToValueAtTime(58, now + 0.035);
+
+          const oGain = ac.createGain();
+          oGain.gain.setValueAtTime(0.24 * vol, now);
+          oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+          osc.connect(oGain).connect(ac.destination);
+          osc.start(now);
+          osc.stop(now + 0.045);
+
+          // 3. Tiny metallic typebar snap
+          const click = ac.createOscillator();
+          click.type = 'square';
+          click.frequency.setValueAtTime(4200 + variance * 0.8, now + 0.003);
+          const cGain = ac.createGain();
+          cGain.gain.setValueAtTime(0.04 * vol, now + 0.003);
+          cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+          click.connect(cGain).connect(ac.destination);
+          click.start(now + 0.003);
+          click.stop(now + 0.018);
+        }
+
+        function playSpace() {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Deeper mechanical spacebar clunk
+          const osc = ac.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(125, now);
+          osc.frequency.exponentialRampToValueAtTime(44, now + 0.065);
+
+          const g = ac.createGain();
+          g.gain.setValueAtTime(0.34 * vol, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+          osc.connect(g).connect(ac.destination);
+          osc.start(now);
+          osc.stop(now + 0.075);
+
+          const noise = ac.createBufferSource();
+          noise.buffer = noiseBuffer;
+          const lp = ac.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.setValueAtTime(1100, now);
+          const ng = ac.createGain();
+          ng.gain.setValueAtTime(0.22 * vol, now);
+          ng.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          noise.connect(lp).connect(ng).connect(ac.destination);
+          noise.start(now);
+          noise.stop(now + 0.055);
+        }
+
+        function playBackspace() {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Double metallic ratchet tick
+          [0, 0.022].forEach((offset, i) => {
+            const noise = ac.createBufferSource();
+            noise.buffer = noiseBuffer;
+            const hp = ac.createBiquadFilter();
+            hp.type = 'bandpass';
+            hp.frequency.setValueAtTime(i === 0 ? 1800 : 2900, now + offset);
+            hp.Q.setValueAtTime(4.0, now + offset);
+
+            const g = ac.createGain();
+            g.gain.setValueAtTime(0.18 * vol, now + offset);
+            g.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.02);
+            noise.connect(hp).connect(g).connect(ac.destination);
+            noise.start(now + offset);
+            noise.stop(now + offset + 0.024);
+          });
+        }
+
+        function playReturn() {
+          const vol = masterVol();
+          if (vol <= 0) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Carriage zip (filtered noise sweep)
+          const zip = ac.createBufferSource();
+          zip.buffer = noiseBuffer;
+          const bp = ac.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(900, now);
+          bp.frequency.exponentialRampToValueAtTime(2200, now + 0.14);
+          bp.Q.setValueAtTime(3.2, now);
+
+          const zg = ac.createGain();
+          zg.gain.setValueAtTime(0.001, now);
+          zg.gain.linearRampToValueAtTime(0.2 * vol, now + 0.03);
+          zg.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+          zip.connect(bp).connect(zg).connect(ac.destination);
+          zip.start(now);
+          zip.stop(now + 0.18);
+
+          // Platen line-feed click + stop thud
+          const thud = ac.createOscillator();
+          thud.type = 'triangle';
+          thud.frequency.setValueAtTime(140, now + 0.14);
+          thud.frequency.exponentialRampToValueAtTime(46, now + 0.22);
+          const tg = ac.createGain();
+          tg.gain.setValueAtTime(0.32 * vol, now + 0.14);
+          tg.gain.exponentialRampToValueAtTime(0.001, now + 0.23);
+          thud.connect(tg).connect(ac.destination);
+          thud.start(now + 0.14);
+          thud.stop(now + 0.24);
+        }
+
+        function playBell() {
+          const vol = masterVol();
+          if (vol <= 0 || !settings.marginBell) return;
+          const ac = ensureContext();
+          if (!ac) return;
+          const now = ac.currentTime;
+
+          // Shimmering brass margin bell partials
+          const freqs = [2420, 4860, 7210];
+          const amps = [0.16, 0.06, 0.025];
+          const decays = [0.95, 0.55, 0.28];
+
+          freqs.forEach((f, idx) => {
+            const osc = ac.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now);
+            const g = ac.createGain();
+            g.gain.setValueAtTime(amps[idx] * vol, now);
+            g.gain.exponentialRampToValueAtTime(0.0005, now + decays[idx]);
+            osc.connect(g).connect(ac.destination);
+            osc.start(now);
+            osc.stop(now + decays[idx] + 0.05);
+          });
+        }
+
+        return { playKey, playSpace, playBackspace, playReturn, playBell };
+      })();
+
+      // ==================== WARMTH & VISUAL THEME ====================
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function applyWarmth(val) {
+        // val: 0 (4200K ivory) -> 62 (2500K tungsten) -> 100 (1950K deep amber)
+        const t = val / 100;
+        const kelvin = Math.round(
+          t <= 0.62
+            ? lerp(4200, 2500, t / 0.62)
+            : lerp(2500, 1950, (t - 0.62) / 0.38)
+        );
+        warmthReadout.textContent = `${kelvin}K`;
+
+        const coreR = 255;
+        const coreG = Math.round(lerp(251, 224, t));
+        const coreB = Math.round(lerp(244, 184, t));
+
+        const midR = Math.round(lerp(246, 250, t));
+        const midG = Math.round(lerp(236, 178, t));
+        const midB = Math.round(lerp(220, 108, t));
+
+        const outR = Math.round(lerp(228, 232, t));
+        const outG = Math.round(lerp(215, 126, t));
+        const outB = Math.round(lerp(196, 66, t));
+
+        const mistR = Math.round(lerp(198, 194, t));
+        const mistG = Math.round(lerp(186, 102, t));
+        const mistB = Math.round(lerp(174, 62, t));
+
+        const root = document.documentElement.style;
+        const isDay = settings.mood === 'daylight';
+        const alphaScale = isDay ? 0.68 : 1;
+
+        root.setProperty('--spot-core', `rgba(${coreR}, ${coreG}, ${coreB}, ${(0.95 * alphaScale).toFixed(2)})`);
+        root.setProperty('--spot-mid', `rgba(${midR}, ${midG}, ${midB}, ${(0.66 * alphaScale).toFixed(2)})`);
+        root.setProperty('--spot-outer', `rgba(${outR}, ${outG}, ${outB}, ${(0.29 * alphaScale).toFixed(2)})`);
+        root.setProperty('--spot-mist', `rgba(${mistR}, ${mistG}, ${mistB}, ${(0.1 * alphaScale).toFixed(2)})`);
+        root.setProperty('--spill-core', `rgba(${midR}, ${Math.max(120, midG - 16)}, ${Math.max(70, midB - 24)}, ${(0.44 * alphaScale).toFixed(2)})`);
+        root.setProperty('--spill-outer', `rgba(${outR}, ${Math.max(95, outG - 10)}, ${Math.max(50, outB - 14)}, ${(0.15 * alphaScale).toFixed(2)})`);
+      }
+
+      function applySettingsToUI() {
+        document.body.setAttribute('data-mood', settings.mood);
+        document.body.classList.toggle('strict-mode', settings.strictMode);
+
+        const root = document.documentElement.style;
+        root.setProperty('--font-family', FONTS[settings.font] || FONTS.typewriter);
+        root.setProperty('--font-size', `${settings.fontSize}px`);
+        root.setProperty('--col-width', `${settings.colWidth}ch`);
+
+        rangeWarmth.value = settings.warmth;
+        rangeSize.value = settings.fontSize;
+        sizeReadout.textContent = `${settings.fontSize}px`;
+        rangeWidth.value = settings.colWidth;
+        widthReadout.textContent = `${settings.colWidth}ch`;
+        rangeVolume.value = Math.round(settings.volume * 100);
+        volReadout.textContent = `${Math.round(settings.volume * 100)}%`;
+        toggleBell.checked = settings.marginBell;
+        toggleStrict.checked = settings.strictMode;
+
+        iconSoundOn.style.display = settings.soundEnabled ? '' : 'none';
+        iconSoundOff.style.display = settings.soundEnabled ? 'none' : '';
+        btnSound.classList.toggle('active', settings.soundEnabled);
+
+        document.querySelectorAll('#mood-selector .seg-btn').forEach((b) => {
+          b.classList.toggle('active', b.dataset.mood === settings.mood);
+        });
+        document.querySelectorAll('#font-selector .seg-btn').forEach((b) => {
+          b.classList.toggle('active', b.dataset.font === settings.font);
+        });
+
+        applyWarmth(settings.warmth);
+        requestAnimationFrame(updateMechanics);
+      }
+
+      // ==================== CARRIAGE & FIXED-LINE MECHANICS ====================
+      function autoGrowTextarea() {
+        editor.style.height = 'auto';
+        editor.style.height = `${Math.max(200, editor.scrollHeight + 40)}px`;
+      }
+
+      function updateMechanics() {
+        autoGrowTextarea();
+
+        const rect = editor.getBoundingClientRect();
+        const style = window.getComputedStyle(editor);
+
+        caretMirror.style.width = `${rect.width}px`;
+        caretMirror.style.fontFamily = style.fontFamily;
+        caretMirror.style.fontSize = style.fontSize;
+        caretMirror.style.lineHeight = style.lineHeight;
+        caretMirror.style.letterSpacing = style.letterSpacing;
+        caretMirror.style.padding = style.padding;
+
+        const selPos = editor.selectionEnd || 0;
+        const textBefore = editor.value.slice(0, selPos);
+
+        // Build mirror safely
+        caretMirror.textContent = textBefore;
+        const marker = document.createElement('span');
+        marker.textContent = '\u200b';
+        caretMirror.appendChild(marker);
+
+        const mirrorRect = caretMirror.getBoundingClientRect();
+        const markerRect = marker.getBoundingClientRect();
+
+        const relX = markerRect.left - mirrorRect.left;
+        const relY = markerRect.top - mirrorRect.top;
+        const lineHeightPx = parseFloat(style.lineHeight) || settings.fontSize * 1.72;
+
+        // Keep active typing baseline locked just above the 75vh platen track
+        const platenY = window.innerHeight * 0.75;
+        const baselineClearance = 24; // room for crisp T-guide
+        const targetSheetTop = platenY - baselineClearance - (relY + lineHeightPx * 0.85);
+
+        paperSheet.style.transform = `translate3d(-50%, ${targetSheetTop}px, 0)`;
+
+        // Compute horizontal caret screen X
+        const sheetLeft = (window.innerWidth - rect.width) / 2;
+        const caretScreenX = Math.max(
+          48,
+          Math.min(window.innerWidth - 48, sheetLeft + relX)
+        );
+
+        document.documentElement.style.setProperty('--cx', `${caretScreenX}px`);
+
+        // Position custom crisp ink caret right above the T-guide
+        inkCaret.style.left = `${caretScreenX}px`;
+        inkCaret.style.top = `${platenY - baselineClearance + 2}px`;
+
+        // Check margin bell (near right margin of visual line)
+        const lineIndex = Math.round(relY / lineHeightPx);
+        const progress = relX / Math.max(1, rect.width);
+        if (progress > 0.87 && bellRangOnLine !== lineIndex) {
+          bellRangOnLine = lineIndex;
+          AudioEngine.playBell();
+        } else if (progress < 0.72 && bellRangOnLine === lineIndex) {
+          bellRangOnLine = -1;
+        }
+      }
+
+      // ==================== DRAFTS MANAGEMENT ====================
+      function countWords(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return 0;
+        return trimmed.split(/\s+/).length;
+      }
+
+      function updateWordCount() {
+        const words = countWords(editor.value);
+        wordCountEl.textContent = `${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`;
+      }
+
+      function createDraftObject(title = 'Untitled Page', content = '') {
+        const now = Date.now();
+        return {
+          id: 'draft_' + now + '_' + Math.random().toString(36).slice(2, 7),
+          title,
+          content,
+          createdAt: now,
+          updatedAt: now
+        };
+      }
+
+      function openDraft(id) {
+        const found = drafts.find((d) => d.id === id);
+        if (!found) return;
+        currentDraft = found;
+        settings.activeDraftId = found.id;
+        saveSettings();
+
+        docTitleInput.value = found.title;
+        editor.value = found.content;
+        bellRangOnLine = -1;
+        updateWordCount();
+        renderDraftsList();
+
+        // Place cursor at end
+        editor.selectionStart = editor.selectionEnd = editor.value.length;
+        requestAnimationFrame(() => {
+          updateMechanics();
+          editor.focus();
+        });
+      }
+
+      function scheduleSave() {
+        if (!currentDraft) return;
+        statusDot.classList.add('saving');
+        statusText.textContent = 'Saving...';
+
+        currentDraft.title = docTitleInput.value.trim() || 'Untitled Page';
+        currentDraft.content = editor.value;
+        currentDraft.updatedAt = Date.now();
+
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(async () => {
+          await persistDraft(currentDraft);
+          statusDot.classList.remove('saving');
+          statusText.textContent = 'Saved locally';
+          renderDraftsList();
+        }, 280);
+      }
+
+      function formatDate(ts) {
+        const d = new Date(ts);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+          ' · ' +
+          d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      }
+
+      function renderDraftsList() {
+        const q = draftSearch.value.trim().toLowerCase();
+        const sorted = [...drafts]
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .filter((d) => !q || d.title.toLowerCase().includes(q) || d.content.toLowerCase().includes(q));
+
+        draftsListEl.innerHTML = '';
+        if (sorted.length === 0) {
+          draftsListEl.innerHTML = '<div style="color:var(--panel-muted);font-size:13px;padding:12px 4px;">No matching drafts.</div>';
+          return;
+        }
+
+        sorted.forEach((d) => {
+          const item = document.createElement('div');
+          item.className = 'draft-item' + (currentDraft && d.id === currentDraft.id ? ' active' : '');
+          const preview = (d.content.replace(/\s+/g, ' ').trim() || 'Empty page').slice(0, 72);
+          const wc = countWords(d.content);
+
+          item.innerHTML = `
+            <div class="draft-item-title"></div>
+            <div class="draft-item-preview"></div>
+            <div class="draft-item-meta">
+              <span>${wc} ${wc === 1 ? 'word' : 'words'}</span>
+              <span>${formatDate(d.updatedAt)}</span>
+            </div>
+            <button class="draft-delete" title="Delete draft">&times;</button>
+          `;
+          item.querySelector('.draft-item-title').textContent = d.title;
+          item.querySelector('.draft-item-preview').textContent = preview;
+
+          item.addEventListener('click', (e) => {
+            if (e.target.closest('.draft-delete')) return;
+            openDraft(d.id);
+            closeDrawers();
+          });
+
+          item.querySelector('.draft-delete').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (drafts.length === 1) {
+              if (!confirm('Clear this page?')) return;
+              d.title = 'Untitled Page';
+              d.content = '';
+              d.updatedAt = Date.now();
+              await persistDraft(d);
+              openDraft(d.id);
+              return;
+            }
+            if (!confirm(`Delete "${d.title}"?`)) return;
+            drafts = drafts.filter((x) => x.id !== d.id);
+            await removeDraftFromDB(d.id);
+            if (currentDraft && currentDraft.id === d.id) {
+              openDraft(drafts[0].id);
+            } else {
+              renderDraftsList();
+            }
+            showToast('Draft deleted');
+          });
+
+          draftsListEl.appendChild(item);
+        });
+      }
+
+      // ==================== EXPORT & BACKUP ====================
+      function safeFilename(name, ext) {
+        const clean = (name || 'untitled-page').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '-').toLowerCase() || 'untitled-page';
+        return `${clean}.${ext}`;
+      }
+
+      function triggerDownload(filename, content, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function printManuscript() {
+        document.getElementById('print-title').textContent = docTitleInput.value.trim() || 'Untitled Page';
+        document.getElementById('print-body').textContent = editor.value;
+        closeDrawers();
+        setTimeout(() => window.print(), 120);
+      }
+
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+      }
+
+      // ==================== DRAWERS ====================
+      function openDrawer(drawer) {
+        closeDrawers();
+        drawer.classList.add('open');
+        backdrop.classList.add('open');
+        document.body.classList.add('drawer-open');
+      }
+
+      function closeDrawers() {
+        drawerDrafts.classList.remove('open');
+        drawerSettings.classList.remove('open');
+        backdrop.classList.remove('open');
+        document.body.classList.remove('drawer-open');
+      }
+
+      // ==================== EVENTS ====================
+      function markTypingActivity() {
+        document.body.classList.add('typing-idle');
+        inkCaret.classList.add('typing');
+        clearTimeout(typingCaretTimer);
+        typingCaretTimer = setTimeout(() => inkCaret.classList.remove('typing'), 420);
+        clearTimeout(idleTimer);
+      }
+
+      window.addEventListener('mousemove', () => {
+        document.body.classList.remove('typing-idle');
+      });
+
+      stage.addEventListener('mousedown', (e) => {
+        if (e.target !== editor) {
+          e.preventDefault();
+          editor.focus();
+        }
+      });
+
+      editor.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        // Strict Typewriter Mode: block Backspace/Delete
+        if (settings.strictMode && (e.key === 'Backspace' || e.key === 'Delete')) {
+          e.preventDefault();
+          AudioEngine.playBackspace();
+          showToast('Strict Mode: keep moving forward');
+          return;
+        }
+
+        if (e.key === 'Enter') {
+          AudioEngine.playReturn();
+          bellRangOnLine = -1;
+        } else if (e.key === ' ') {
+          AudioEngine.playSpace();
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+          AudioEngine.playBackspace();
+        } else if (e.key.length === 1) {
+          AudioEngine.playKey(e.key.charCodeAt(0));
+        }
+
+        markTypingActivity();
+      });
+
+      editor.addEventListener('input', () => {
+        updateWordCount();
+        updateMechanics();
+        scheduleSave();
+      });
+
+      ['keyup', 'click', 'select', 'focus'].forEach((ev) => {
+        editor.addEventListener(ev, () => requestAnimationFrame(updateMechanics));
+      });
+
+      window.addEventListener('resize', () => requestAnimationFrame(updateMechanics));
+
+      docTitleInput.addEventListener('input', scheduleSave);
+
+      // Global Mac shortcuts
+      window.addEventListener('keydown', (e) => {
+        const mod = e.metaKey || e.ctrlKey;
+        if (mod && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          if (drawerDrafts.classList.contains('open')) closeDrawers();
+          else { renderDraftsList(); openDrawer(drawerDrafts); draftSearch.focus(); }
+        } else if (mod && e.key === ',') {
+          e.preventDefault();
+          if (drawerSettings.classList.contains('open')) closeDrawers();
+          else openDrawer(drawerSettings);
+        } else if (mod && e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          printManuscript();
+        } else if (mod && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          scheduleSave();
+          showToast('Saved locally');
+        } else if (e.key === 'Escape') {
+          closeDrawers();
+          editor.focus();
+        }
+      });
+
+      // Buttons
+      btnDrafts.addEventListener('click', () => {
+        renderDraftsList();
+        openDrawer(drawerDrafts);
+      });
+      btnSettings.addEventListener('click', () => openDrawer(drawerSettings));
+      backdrop.addEventListener('click', closeDrawers);
+      document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeDrawers));
+
+      btnSound.addEventListener('click', () => {
+        settings.soundEnabled = !settings.soundEnabled;
+        saveSettings();
+        applySettingsToUI();
+        showToast(settings.soundEnabled ? 'Typewriter sound on' : 'Sound muted');
+      });
+
+      btnNewDraft.addEventListener('click', async () => {
+        const d = createDraftObject(`Page ${drafts.length + 1}`, '');
+        drafts.push(d);
+        await persistDraft(d);
+        openDraft(d.id);
+        closeDrawers();
+        showToast('New page loaded');
+      });
+
+      draftSearch.addEventListener('input', renderDraftsList);
+
+      // Settings controls
+      document.querySelectorAll('#mood-selector .seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          settings.mood = btn.dataset.mood;
+          saveSettings();
+          applySettingsToUI();
+        });
+      });
+
+      document.querySelectorAll('#font-selector .seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          settings.font = btn.dataset.font;
+          saveSettings();
+          applySettingsToUI();
+        });
+      });
+
+      rangeWarmth.addEventListener('input', () => {
+        settings.warmth = Number(rangeWarmth.value);
+        applyWarmth(settings.warmth);
+        saveSettings();
+      });
+
+      rangeSize.addEventListener('input', () => {
+        settings.fontSize = Number(rangeSize.value);
+        saveSettings();
+        applySettingsToUI();
+      });
+
+      rangeWidth.addEventListener('input', () => {
+        settings.colWidth = Number(rangeWidth.value);
+        saveSettings();
+        applySettingsToUI();
+      });
+
+      rangeVolume.addEventListener('input', () => {
+        settings.volume = Number(rangeVolume.value) / 100;
+        volReadout.textContent = `${Math.round(settings.volume * 100)}%`;
+        saveSettings();
+      });
+
+      toggleBell.addEventListener('change', () => {
+        settings.marginBell = toggleBell.checked;
+        saveSettings();
+      });
+
+      toggleStrict.addEventListener('change', () => {
+        settings.strictMode = toggleStrict.checked;
+        saveSettings();
+        applySettingsToUI();
+      });
+
+      // Exports
+      document.getElementById('exp-txt').addEventListener('click', () => {
+        triggerDownload(safeFilename(docTitleInput.value, 'txt'), editor.value, 'text/plain;charset=utf-8');
+        showToast('Exported .TXT');
+      });
+
+      document.getElementById('exp-md').addEventListener('click', () => {
+        const md = `# ${docTitleInput.value.trim() || 'Untitled Page'}\n\n${editor.value}`;
+        triggerDownload(safeFilename(docTitleInput.value, 'md'), md, 'text/markdown;charset=utf-8');
+        showToast('Exported .MD');
+      });
+
+      document.getElementById('exp-pdf').addEventListener('click', printManuscript);
+
+      document.getElementById('exp-copy').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(editor.value);
+          showToast('Copied to clipboard');
+        } catch {
+          showToast('Select text and press ⌘C');
+        }
+      });
+
+      document.getElementById('exp-backup').addEventListener('click', () => {
+        const payload = JSON.stringify({
+          app: 'Studio Typewriter',
+          exportedAt: new Date().toISOString(),
+          drafts
+        }, null, 2);
+        triggerDownload('studio-typewriter-backup.json', payload, 'application/json;charset=utf-8');
+        showToast('Full backup downloaded');
+      });
+
+      btnImportJson.addEventListener('click', () => fileImport.click());
+      fileImport.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        try {
+          if (file.name.endsWith('.json')) {
+            const parsed = JSON.parse(text);
+            const incoming = Array.isArray(parsed) ? parsed : parsed.drafts;
+            if (!Array.isArray(incoming)) throw new Error('Invalid');
+            let count = 0;
+            for (const item of incoming) {
+              if (item && typeof item.content === 'string') {
+                const d = createDraftObject(item.title || 'Imported Page', item.content);
+                drafts.push(d);
+                await persistDraft(d);
+                count++;
+              }
+            }
+            renderDraftsList();
+            if (count > 0) openDraft(drafts[drafts.length - 1].id);
+            showToast(`Imported ${count} draft${count === 1 ? '' : 's'}`);
+          } else {
+            const title = file.name.replace(/\.[^.]+$/, '');
+            const d = createDraftObject(title, text);
+            drafts.push(d);
+            await persistDraft(d);
+            openDraft(d.id);
+            showToast('Imported text file');
+          }
+        } catch {
+          showToast('Could not read file');
+        }
+        fileImport.value = '';
+      });
+
+      // ==================== INIT ====================
+      async function init() {
+        loadSettings();
+        applySettingsToUI();
+
+        db = await openDB();
+        drafts = await loadAllDrafts();
+
+        if (!drafts.length) {
+          const starter = createDraftObject('Untitled Page', '');
+          drafts.push(starter);
+          await persistDraft(starter);
+        }
+
+        const initial = drafts.find((d) => d.id === settings.activeDraftId) || drafts[0];
+        openDraft(initial.id);
+
+        // Register offline Service Worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
